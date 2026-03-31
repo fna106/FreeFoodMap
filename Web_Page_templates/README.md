@@ -295,38 +295,38 @@ Edit organization name
 # General Improvements:
 
 ##  1. Base Template
-      - Create base.html for shared layout (navbar, styling)
+  - Create base.html for shared layout (navbar, styling)
 
 ##  2. Flash Messages
-      - Standardize success/error messages across all pages
+  - Standardize success/error messages across all pages
 
 ##  3. Validation
-      - Improve input validation (ZIP, email, phone, URL)
+  - Improve input validation (ZIP, email, phone, URL)
 
 ##  4. Search & Filters
-      - Add to all admin tables
+  - Add to all admin tables
 
 ##  5. Audit Tracking
-      - Track changes (who, when, what)
+  - Track changes (who, when, what)
 
 ##  6. Data Verification System
-      - Last verified
-      - Verified by
-      - Report count
+  - Last verified
+  - Verified by
+  - Report count
 
 ##  7. Accessibility
-      - Better labels
-      - Keyboard navigation
-      - Contrast improvements
+  - Better labels
+  - Keyboard navigation
+  - Contrast improvements
 
 ##  8. SEO & Trust
-      - Call-before-visit messaging
-      - Last updated timestamps
-      - Structured metadata
-      - Priority Next Features
-      - Improve public_map.html (filters, verification info)
-      - Enhance suggest_location.html (validation + duplicate detection)
-      - Upgrade admin_location_suggestions.html (edit + smarter approval)
-      - Improve admin_locations.html (report tracking + filtering)
-      - Complete organization merge feature
-      - Expand volunteer dashboard features
+  - Call-before-visit messaging
+  - Last updated timestamps
+  - Structured metadata
+  - Priority Next Features
+  - Improve public_map.html (filters, verification info)
+  - Enhance suggest_location.html (validation + duplicate detection)
+  - Upgrade admin_location_suggestions.html (edit + smarter approval)
+  - Improve admin_locations.html (report tracking + filtering)
+  - Complete organization merge feature
+  - Expand volunteer dashboard features
