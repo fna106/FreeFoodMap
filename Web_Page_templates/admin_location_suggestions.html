@@ -1,0 +1,116 @@
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Review Location Suggestions</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        body { background-color: #f5f7fa; }
+
+        .page-box {
+            background: white;
+            padding: 25px;
+            margin-top: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            max-width: 1200px;
+        }
+    </style>
+</head>
+
+<body>
+
+<nav class="navbar navbar-light bg-white shadow-sm mb-4">
+    <div class="container d-flex justify-content-between align-items-center">
+        <a class="navbar-brand fw-bold" href="/">Free Food Map</a>
+
+        <div>
+            <a class="btn btn-link" href="/map">Map</a>
+
+            {% if session.user_id %}
+                <a class="btn btn-link text-danger" href="/logout">Logout</a>
+            {% else %}
+                <a class="btn btn-link" href="/login">Login</a>
+                <a class="btn btn-link" href="/register">Sign Up</a>
+            {% endif %}
+        </div>
+    </div>
+</nav>
+
+
+
+<div class="container">
+    <div class="page-box">
+
+        <a href="javascript:history.back()" class="btn btn-secondary mb-3">← Back</a>
+
+        <h2 class="mb-3">Location Suggestions</h2>
+        <p>Approve or reject new locations submitted by community members.</p>
+
+    {% if error_message %}
+        <div class="alert alert-danger text-center mb-3">
+            {{ error_message }}
+        </div>
+        {% endif %}
+
+        {% if suggestions %}
+        <table class="table table-bordered table-hover">
+            <thead class="table-primary">
+                <tr>
+                    <th>Location Name</th>
+                    <th>Address</th>
+                    <th>ZipCode</th>
+                    <th>Service Type</th>
+                    <th>Organization</th>
+                    <th>Submitted</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+
+            <tbody>
+            {% for s in suggestions %}
+                <tr>
+                    <td>{{ s.name }}</td>
+                    <td>{{ s.address }}</td>
+                    <td>{{ s.zip_code }}</td>
+                    <td>{{ s.service_type }}</td>
+                    <td>{{ s.organization or "—" }}</td>
+                    <td>{{ s.submitted_at }}</td>
+
+                    <td>
+                        <form action="/admin/location-suggestions/approve" method="POST" style="display:inline;">
+                            <input type="hidden" name="address" value="{{ s.address }}">
+                            <button type="submit" class="btn btn-success btn-sm mb-1">Approve</button>
+                        </form>
+
+                        <a href="/admin/location-suggestions/reject/{{ s.suggestion_id }}"
+                           class="btn btn-danger btn-sm">Reject</a>
+                    </td>
+
+                </tr>
+
+                <tr>
+                    <td colspan="8">
+                        <strong>Hours:</strong> {{ s.hours or "Not provided" }}<br>
+                        <strong>Phone:</strong> {{ s.contact_phone or "N/A" }}<br>
+                        <strong>Email:</strong> {{ s.contact_email or "N/A" }}<br>
+                        <strong>Website:</strong> {{ s.contact_web or "N/A" }}<br>
+                        <strong>Notes:</strong> {{ s.notes or "None" }}
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+        {% else %}
+        <div class="alert alert-info text-center mt-4">
+            No pending location suggestions.
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+
+</body>
+</html>

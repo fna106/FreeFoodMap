@@ -1,0 +1,207 @@
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Free Food Map</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+          rel="stylesheet">
+
+    <style>
+        body { background-color: #f5f7fa; }
+
+        .map-container {
+            width: 100%;
+            height: 500px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+
+        .page-box {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            margin-bottom: 40px;
+        }
+
+        a {
+            color: inherit !important;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+
+</head>
+
+<body>
+
+<nav class="navbar navbar-light bg-white shadow-sm mb-4">
+    <div class="container d-flex justify-content-between align-items-center">
+
+        <a class="navbar-brand fw-bold" href="/">Free Food Map</a>
+
+        <div>
+            <a class="btn btn-link" href="/map">Map</a>
+
+            {% if session.user_id %}
+                <a class="btn btn-link text-danger" href="/logout">Logout</a>
+            {% else %}
+                <a class="btn btn-link" href="/login">Login</a>
+                <a class="btn btn-link" href="/register">Sign Up</a>
+            {% endif %}
+        </div>
+
+    </div>
+</nav>
+
+
+<div class="container">
+
+    <h2 class="text-center mb-4">Public Free Food Map</h2>
+
+    <div class="map-container">
+        <iframe 
+            src="https://www.google.com/maps/d/embed?mid=1QQFiKgTDZMWVyCHdAEqnI39A3YHwwc4&ehbc=2E312F&noprof=1"
+            allowfullscreen>
+        </iframe>
+    </div>
+
+
+    <div class="page-box">
+
+        {% if error_message %}
+            <div class="alert alert-danger">{{ error_message }}</div>
+        {% endif %}
+
+        <h4>Search Locations by ZIP Code</h4>
+
+        <form action="/search-zip" method="GET" class="row g-3 mb-4">
+            <div class="col-auto">
+                <input type="text"
+                       name="zipcode"
+                       class="form-control"
+                       placeholder="Enter ZIP code"
+                       maxlength="5"
+                       required
+                       pattern="^[0-9]{5}$">
+            </div>
+
+            <div class="col-auto">
+                <button class="btn btn-primary">Search</button>
+            </div>
+        </form>
+
+
+        {% if zipcode %}
+            <h5>Results for ZIP Code: {{ zipcode }}</h5>
+
+            {% if locations %}
+            <table class="table table-bordered mt-3">
+                <thead class="table-light">
+                    <tr>
+                        <th>Location</th>
+                        <th>Details</th>
+                        <th>Organization</th>
+                        <th>Next Event</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for loc in locations %}
+                    <tr>
+
+                        <td>
+                            <strong>{{ loc.location_name }}</strong>
+                        </td>
+
+                        <td>
+                            <strong>Address:</strong> {{ loc.address }}<br>
+
+                            {% if loc.service_type %}
+                                <strong>Service Type:</strong> {{ loc.service_type }}<br>
+                            {% endif %}
+
+                            {% if loc.hours %}
+                                <strong>Hours:</strong> {{ loc.hours }}<br>
+                            {% endif %}
+
+                            {% if loc.contact_phone %}
+                                <strong>Phone:</strong> {{ loc.contact_phone }}<br>
+                            {% endif %}
+
+                            {% if loc.contact_email %}
+                                <strong>Email:</strong> {{ loc.contact_email }}<br>
+                            {% endif %}
+
+                            {% if loc.contact_web %}
+                                <strong>Website:</strong>
+                                <a href="{{ loc.contact_web }}" target="_blank">
+                                    {{ loc.contact_web }}
+                                </a><br>
+                            {% endif %}
+
+                            {% if loc.notes %}
+                                <strong>Notes:</strong> {{ loc.notes }}
+                            {% endif %}
+                        </td>
+
+                        <td>{{ loc.organization_name or "N/A" }}</td>
+
+                        <td>
+                            {% if loc.has_event %}
+                                {{ loc.next_event_date }}
+                            {% else %}
+                                <span class="text-muted">No upcoming events</span>
+                            {% endif %}
+                        </td>
+
+                        <td>
+
+                            <a href="/report-location/{{ loc.location_id }}"
+                               class="btn btn-warning btn-sm mb-1">
+                               Report Issue
+                            </a>
+
+                            {% if loc.has_event %}
+                            <a href="/login?next=volunteer&location={{ loc.location_id }}"
+                               class="btn btn-primary btn-sm">
+                               Volunteer
+                            </a>
+                            {% endif %}
+                        </td>
+
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% else %}
+                <p>No locations found for this ZIP code.</p>
+            {% endif %}
+        {% endif %}
+
+        {% if reported_message %}
+            <hr class="mt-4">
+            <div class="alert alert-success">
+                {{ reported_message }}
+            </div>
+        {% endif %}
+
+    </div>
+</div>
+
+</body>
+</html>
+

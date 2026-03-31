@@ -1,0 +1,73 @@
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Add New Organization</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        body { background-color: #f5f7fa; }
+
+        .page-box {
+            background: white;
+            padding: 30px;
+            margin-top: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+
+<body>
+
+<nav class="navbar navbar-light bg-white shadow-sm mb-4">
+    <div class="container d-flex justify-content-between align-items-center">
+        <a class="navbar-brand fw-bold" href="/">Free Food Map</a>
+
+        <div>
+            <a class="btn btn-link" href="/map">Map</a>
+
+            {% if session.user_id %}
+                <a class="btn btn-link text-danger" href="/logout">Logout</a>
+            {% else %}
+                <a class="btn btn-link" href="/login">Login</a>
+                <a class="btn btn-link" href="/register">Sign Up</a>
+            {% endif %}
+        </div>
+    </div>
+</nav>
+
+
+<div class="container col-lg-6">
+    <div class="page-box">
+
+        <a href="javascript:history.back()" class="btn btn-secondary mb-3">← Back</a>
+
+        <h2 class="mb-3">Add New Organization</h2>
+
+        {% if error_organizations %}
+            <div class="alert alert-danger">{{ error_organizations }}</div>
+
+            <a href="/admin/organizations" class="btn btn-secondary mt-3">← Back to Organizations</a>
+
+        {% else %}
+
+        <form method="POST">
+
+            <div class="mb-3">
+                <label class="form-label">Organization Name</label>
+                <input type="text" name="name" class="form-control" required>
+            </div>
+
+            <button class="btn btn-success">Create Organization</button>
+            <a href="/admin/organizations" class="btn btn-secondary">Cancel</a>
+
+        </form>
+
+        {% endif %}
+
+    </div>
+</div>
+
+</body>
+</html>
