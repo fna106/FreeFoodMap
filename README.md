@@ -172,24 +172,19 @@ Appear when users search:
 
 # Current Status
 
-## Completed
-- Backend (Flask)
-- Database (PostgreSQL)
-- Public map + search
-- Admin system
-- User registration + roles
-- ~500+ locations
-
-## In Progress
-- Migration to Google Cloud
-- Domain integration (freefoodmap.org)
-- Scraping improvements
-
-## Needs Work
-- Data coverage (beyond PA)
-- UI/UX improvements
-- Automation pipeline
-- SEO optimization
+- [X] Backend (Flask)
+- [X] Database (PostgreSQL)
+- [X] Public map + search
+- [X] Admin system
+- [X] User registration + roles
+- [X] ~500+ locations
+- [ ] Migration to Google Cloud (In Progress)
+- [ ] Domain integration (freefoodmap.org) (In Progress)
+- [ ] Scraping improvements (In Progress)
+- [ ] Data coverage (beyond PA)
+- [ ] UI/UX improvements
+- [ ] Automation pipeline
+- [ ] SEO optimization
 
 ---
 
@@ -209,8 +204,8 @@ Appear when users search:
 ### Data Quality
 - [ ] Add report issue system improvements
 - [ ] Add verification tracking:
-  - last updated
-  - verified by
+  - [ ] last updated
+  - [ ] verified by
 - [ ] Add duplicate detection for locations
 - [ ] Add edit-before-approve for suggestions
 
