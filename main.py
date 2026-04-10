@@ -4,7 +4,7 @@ import hashlib
 import os
 
 app = Flask(__name__)
-app.secret_key = "secret-key"
+app.secret_key = os.getenv("APP_SECRET_KEY")
 
 
 
