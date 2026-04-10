@@ -108,7 +108,7 @@ We are moving toward a **hybrid validation system**:
 ### Goal
 Create a **semi open-source dataset** where:
 - data is scalable
-- accuracy is maintained through feedback loops
+- accuracy is maintained througha public feedback loops
 
 ---
 
@@ -120,6 +120,7 @@ Create a **semi open-source dataset** where:
   - 403 blocks
   - dynamic websites
   - inconsistent structures
+  - robots.txt
 
 ---
 
@@ -163,8 +164,8 @@ Appear when users search:
 ---
 
 # Project Structure
-/templates → HTML pages (Flask views)
-/app.py → Flask backend
+/templates → HTML pages
+/main.py → Flask backend
 /database → PostgreSQL schema
 
 
@@ -178,8 +179,8 @@ Appear when users search:
 - [X] Admin system
 - [X] User registration + roles
 - [X] ~500+ locations
-- [X] Migration to Google Cloud (In Progress)
-- [ ] Domain integration (freefoodmap.org) (In Progress)
+- [X] Migration to Google Cloud
+- [X] Domain integration (freefoodmap.org)
 - [ ] Scraping improvements (In Progress)
 - [ ] Data coverage (beyond PA)
 - [ ] UI/UX improvements (In Progress)

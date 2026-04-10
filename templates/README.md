@@ -17,9 +17,9 @@ Provides navigation to:
   - Login / Sign up
 
 ### TO-DO:
-  - [ ] Stronger mission explanation
-  - [ ] “Call before visiting” notice
-  - [ ] Data validation explanation
+  - [ ] Stronger mission explanation (Mission, visin)
+  - [ ] introduction into the project
+  - [ ] Data validation explanation 
   - [ ] Trust metrics (locations, partners, users)
   - [ ] FAQ section
   - [ ] SEO-focused content
@@ -57,11 +57,9 @@ Collects:
 
 ### TO-DO:
   - [ ] Source link field
-  - [ ] “I verified this recently” checkbox
+  - [ ] Label Optional vs. Required fields
   - [ ] Address autocomplete
-  - [ ] Duplicate detection
-  - [ ] File upload (optional proof)
-  - [ ] Submission tracking
+  - [ ] Duplicate detection and Submission tracking
   - [ ] Categorize type (event, recurring, etc.)
 
 ## 4. login.html
@@ -203,6 +201,8 @@ Edit or delete locations
 
 ### TO-DO:
   - [ ] Search and filters
+  - [ ] Order by column
+  - [ ] Multiple pages, 25-50 location per page
   - [ ] Last updated field
   - [ ] Report count
   - [ ] Status flags
@@ -264,7 +264,7 @@ Edit existing event
 
 ## 20. admin_organizations.html
 Manage organizations
-Edit or delete
+Create, edit or delete
 
 ### TO-DO:
   - [ ] Merge organizations (important)
@@ -277,6 +277,8 @@ Edit or delete
 Create new organization
 
 ### TO-DO:
+  - [ ] Create an organization **Python side**
+  - [ ] decide between having a 'Cancel' botton or 'Back' botton
   - [ ] Duplicate check
   - [ ] Contact details
   - [ ] Organization type
