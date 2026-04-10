@@ -44,7 +44,7 @@ def register():
     cur = conn.cursor()
 
     # this part send a query to the database to get all the organizations to display them if the org exists so the user can just choose it instead of entering the name
-    cur.execute("SELECT org_id, name FROM Organization ORDER BY name;")
+    cur.execute("SELECT org_id, name FROM freefoodmap.Organization ORDER BY name;")
     organizations = cur.fetchall()
 
     roles = ["Org Staff", "Volunteer"]
@@ -72,7 +72,7 @@ def register():
 
         # once they submit a request, their info is saved in the ContributorRequest table
         cur.execute("""
-            INSERT INTO ContributorRequest
+            INSERT INTO freefoodmap.ContributorRequest
             (name, email, phone_number, organization, reason, username, password_hash, salt, role_requested, decision)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'pending')
         """, (name, email, phone_number, organization, reason, username, password_hash, salt, role_requested))
@@ -108,7 +108,7 @@ def login():
         # this query checks if the email exists in the database
         cur.execute("""
             SELECT user_id, username, password_hash, salt, role, org_id
-            FROM "user"
+            FROM freefoodmap.appuser
             WHERE email = %s
         """, (email,))
 
@@ -180,7 +180,7 @@ def admin_pending():
     # a query that gets all the pending user requests
     cur.execute("""
         SELECT request_id, name, email, organization, reason, role_requested
-        FROM ContributorRequest
+        FROM freefoodmap.ContributorRequest
         WHERE decision = 'pending'
     """)
 
@@ -224,7 +224,7 @@ def approve_user(request_id):
         cur.execute("""
             SELECT name, email, phone_number, username, password_hash, salt, 
                    role_requested, organization
-            FROM ContributorRequest
+            FROM freefoodmap.ContributorRequest
             WHERE request_id = %s AND decision = 'pending'
         """, (request_id,))
 
@@ -250,7 +250,7 @@ def approve_user(request_id):
 
             # unfortunately, if the spelling is different, this part will fail
             cur.execute("""
-                SELECT org_id FROM Organization
+                SELECT org_id FROM freefoodmap.Organization
                 WHERE LOWER(name) = LOWER(%s)
             """, (org_name_clean,))
             existing = cur.fetchone()
@@ -260,7 +260,7 @@ def approve_user(request_id):
             else:
                 # if the code below didn't see an organization with the same name, it will create one
                 cur.execute("""
-                    INSERT INTO Organization (name)
+                    INSERT INTO freefoodmap.Organization (name)
                     VALUES (%s)
                     RETURNING org_id
                 """, (org_name_clean,))
@@ -268,23 +268,23 @@ def approve_user(request_id):
 
         # this part will ensure that the user we are approving has a unique username and email. Since these requests are initially stored at ContributorRequest table, we can only check later if they exist as a user when we try to approve them. (Future addition: check if we can validate them against user table before allowing them to submit the request)
         # Reject if username or email already exists
-        cur.execute("""SELECT 1 FROM "user" WHERE username = %s""", (username,))
+        cur.execute("""SELECT 1 FROM freefoodmap.appuser WHERE username = %s""", (username,))
         if cur.fetchone():
             raise Exception("Username already exists. Cannot approve.")
 
-        cur.execute("""SELECT 1 FROM "user" WHERE email = %s""", (email,))
+        cur.execute("""SELECT 1 FROM freefoodmap.appuser WHERE email = %s""", (email,))
         if cur.fetchone():
             raise Exception("Email already exists. Cannot approve.")
 
         # once we have verified that the username and email are unique, we can create the user account
         cur.execute("""
-            INSERT INTO "user" (username, password_hash, salt, email, phone_number, role, org_id)
+            INSERT INTO freefoodmap.appuser (username, password_hash, salt, email, phone_number, role, org_id)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
         """, (username, password_hash, salt, email, phone_number, role_requested, org_id))
 
         # once the user is created, we can approve the request (change the request type in the ContributorRequest table to 'approved')
         cur.execute("""
-            UPDATE ContributorRequest
+            UPDATE freefoodmap.ContributorRequest
             SET decision = 'approved'
             WHERE request_id = %s
         """, (request_id,))
@@ -320,7 +320,7 @@ def deny_user(request_id):
     cur = conn.cursor()
 
     cur.execute("""
-        UPDATE ContributorRequest
+        UPDATE freefoodmap.ContributorRequest
         SET decision = 'rejected'
         WHERE request_id = %s
     """, (request_id,))
@@ -352,7 +352,7 @@ def suggest_location():
 
             # this part takes all the info they provided and submit it to our LocationSuggestion table, where the admin will review it to make sure it's accurate first before adding it to the map
         cur.execute("""
-            INSERT INTO LocationSuggestion
+            INSERT INTO freefoodmap.LocationSuggestion
             (name, address, zip_code, service_type, organization,
             hours, contact_phone, contact_email, contact_web, notes, status)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'pending')
@@ -392,8 +392,8 @@ def admin_locations():
             SELECT Location.location_id, Location.name, Location.address,
                    Location.zip_code, Location.service_type,
                    Organization.name AS org_name
-            FROM Location
-        LEFT JOIN Organization ON Location.org_id = Organization.org_id
+            FROM freefoodmap.Location
+        LEFT JOIN freefoodmap.Organization ON Location.org_id = Organization.org_id
         ORDER BY Location.location_id;
     """)
 
@@ -436,7 +436,7 @@ def report_location(location_id):
                contact_web,
                notes,
                organization_name
-        FROM ZipcodeLocationView
+        FROM freefoodmap.ZipcodeLocationView
         WHERE location_id = %s
     """, (location_id,))
 
@@ -459,7 +459,7 @@ def report_location(location_id):
     """
 
     cur.execute("""
-        INSERT INTO Report (user_id, description, location_id, status, report_date)
+        INSERT INTO freefoodmap.Report (user_id, description, location_id, status, report_date)
         VALUES (%s, %s, %s, 'Pending', CURRENT_DATE)
     """, (user_id, description.strip(), location_id))
 
@@ -497,8 +497,8 @@ def admin_reports():
                            R.report_date,
                            L.name AS location_name,
                            L.location_id
-                    FROM Report R
-                             LEFT JOIN "user" U ON R.user_id = U.user_id
+                    FROM freefoodmap.Report R
+                             LEFT JOIN appuser U ON R.user_id = U.user_id
                              LEFT JOIN Location L ON R.location_id = L.location_id
                     WHERE R.status != 'Resolved'
                     ORDER BY R.report_date DESC;
@@ -539,7 +539,7 @@ def resolve_report(report_id):
 
     #updating the status of the report to Resolved
     cur.execute("""
-        UPDATE Report
+        UPDATE freefoodmap.Report
         SET status = 'Resolved'
         WHERE report_id = %s
     """, (report_id,))
@@ -567,8 +567,8 @@ def admin_events():
     cur.execute("""
         SELECT E.event_id, E.type, E.date,
                 L.name AS location_name
-        FROM Event E
-        JOIN Location L ON E.location_id = L.location_id
+        FROM freefoodmap.Event E
+        JOIN freefoodmap.Location L ON E.location_id = L.location_id
         ORDER BY E.date DESC;
     """)
 
@@ -609,7 +609,7 @@ def admin_edit_event(event_id):
         location_id = request.form["location_id"]
 
         cur.execute("""
-            UPDATE Event
+            UPDATE freefoodmap.Event
             SET type = %s,
                 date = %s,
                 org_id = %s,
@@ -627,17 +627,17 @@ def admin_edit_event(event_id):
     # will provide the original info of the event to be edited
     cur.execute("""
         SELECT event_id, type, date, org_id, location_id
-        FROM Event
+        FROM freefoodmap.Event
         WHERE event_id = %s
     """, (event_id,))
     e = cur.fetchone()
 
     # we want to give the admin a list to the existing orgs
-    cur.execute("SELECT org_id, name FROM Organization ORDER BY name;")
+    cur.execute("SELECT org_id, name FROM freefoodmap.Organization ORDER BY name;")
     organizations = cur.fetchall()
 
     # and the existing locations
-    cur.execute("SELECT location_id, name FROM Location ORDER BY name;")
+    cur.execute("SELECT location_id, name FROM freefoodmap.Location ORDER BY name;")
     locations = cur.fetchall()
 
     cur.close()
@@ -670,7 +670,7 @@ def admin_delete_event(event_id):
     conn = get_db_connection()
     cur = conn.cursor()
 
-    cur.execute("DELETE FROM Event WHERE event_id = %s", (event_id,))
+    cur.execute("DELETE FROM freefoodmap.Event WHERE event_id = %s", (event_id,))
 
     conn.commit()
     cur.close()
@@ -697,7 +697,7 @@ def admin_location_suggestions():
         SELECT suggestion_id, name, address, zip_code, service_type,
                organization, hours, contact_phone, contact_email,
                contact_web, notes, submitted_at, status
-        FROM LocationSuggestion
+        FROM freefoodmap.LocationSuggestion
         WHERE status = 'pending'
         ORDER BY submitted_at DESC;
     """)
@@ -759,7 +759,7 @@ def approve_location_suggestion():
                            contact_email,
                            contact_web,
                            notes
-                    FROM LocationSuggestion
+                    FROM freefoodmap.LocationSuggestion
                     WHERE LOWER(address) = LOWER(%s)
                       AND status = 'pending'
                     """, (address,))
@@ -775,7 +775,7 @@ def approve_location_suggestion():
         # check it with the location table using address
         cur.execute("""
                     SELECT location_id
-                    FROM Location
+                    FROM freefoodmap.Location
                     WHERE LOWER(address) = LOWER(%s)
                     """, (address,))
         duplicate = cur.fetchone()
@@ -792,7 +792,7 @@ def approve_location_suggestion():
 
             cur.execute("""
                         SELECT org_id
-                        FROM Organization
+                        FROM freefoodmap.Organization
                         WHERE LOWER(name) = LOWER(%s)
                         """, (org_name_clean,))
 
@@ -802,14 +802,14 @@ def approve_location_suggestion():
                 org_id = existing_org[0]
             else:
                 cur.execute("""
-                            INSERT INTO Organization (name)
+                            INSERT INTO freefoodmap.Organization (name)
                             VALUES (%s) RETURNING org_id
                             """, (org_name_clean,))
                 org_id = cur.fetchone()[0]
 
         # once it passes all the checks, we will add the location to the database
         cur.execute("""
-                    INSERT INTO Location
+                    INSERT INTO freefoodmap.Location
                     (name, address, zip_code, service_type, org_id,
                      hours, contact_phone, contact_email, contact_web, notes)
                     VALUES (%s, %s, %s, %s, %s,
@@ -821,7 +821,7 @@ def approve_location_suggestion():
 
         # and change the status of the suggestion to approved
         cur.execute("""
-                    UPDATE LocationSuggestion
+                    UPDATE freefoodmap.LocationSuggestion
                     SET status = 'approved'
                     WHERE LOWER(address) = LOWER(%s)
                     """, (address,))
@@ -902,7 +902,7 @@ def reject_location_suggestion(suggestion_id):
     cur = conn.cursor()
 
     cur.execute("""
-        UPDATE LocationSuggestion
+        UPDATE freefoodmap.LocationSuggestion
         SET status = 'rejected'
         WHERE suggestion_id = %s
     """, (suggestion_id,))
@@ -928,7 +928,7 @@ def admin_organizations():
 
     cur.execute("""
         SELECT org_id, name
-        FROM Organization
+        FROM freefoodmap.Organization
         ORDER BY name;
     """)
 
@@ -959,7 +959,7 @@ def new_organization():
         cur = conn.cursor()
 
         cur.execute("""
-            INSERT INTO Organization (name)
+            INSERT INTO freefoodmap.Organization (name)
             VALUES (%s)
         """, (name,))
 
@@ -988,7 +988,7 @@ def edit_organization(org_id):
         new_name = request.form["name"]
 
         cur.execute("""
-            UPDATE Organization
+            UPDATE freefoodmap.Organization
             SET name = %s
             WHERE org_id = %s
         """, (new_name, org_id))
@@ -1001,7 +1001,7 @@ def edit_organization(org_id):
 
     cur.execute("""
         SELECT org_id, name
-        FROM Organization
+        FROM freefoodmap.Organization
         WHERE org_id = %s
     """, (org_id,))
 
@@ -1027,11 +1027,11 @@ def delete_organization(org_id):
     cur = conn.cursor()
 
     # we want to check if there are any locations associated with this org, because we don't want tp delete it if there are
-    cur.execute("SELECT COUNT(*) FROM Location WHERE org_id = %s", (org_id,))
+    cur.execute("SELECT COUNT(*) FROM freefoodmap.Location WHERE org_id = %s", (org_id,))
     location_count = cur.fetchone()[0]
 
     # we also want to check if there are any users associated with this org, because we don't want to delete it if there are'
-    cur.execute('SELECT COUNT(*) FROM "user" WHERE org_id = %s', (org_id,))
+    cur.execute('SELECT COUNT(*) FROM freefoodmap.appuser WHERE org_id = %s', (org_id,))
     user_count = cur.fetchone()[0]
 
     if location_count > 0 or user_count > 0:
@@ -1048,7 +1048,7 @@ def delete_organization(org_id):
         )
 
         # if the org exist by itself, we can delete it
-    cur.execute("DELETE FROM Organization WHERE org_id = %s", (org_id,))
+    cur.execute("DELETE FROM freefoodmap.Organization WHERE org_id = %s", (org_id,))
     conn.commit()
 
     cur.close()
@@ -1059,7 +1059,7 @@ def delete_organization(org_id):
 def get_all_organizations():
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("SELECT org_id, name FROM Organization ORDER BY name;")
+    cur.execute("SELECT org_id, name FROM freefoodmap.Organization ORDER BY name;")
     orgs = cur.fetchall()
     cur.close()
     conn.close()
@@ -1087,7 +1087,7 @@ def admin_new_event():
         location_id = request.form["location_id"]
 
         cur.execute("""
-            INSERT INTO Event (type, date, org_id, location_id)
+            INSERT INTO freefoodmap.Event (type, date, org_id, location_id)
             VALUES (%s, %s, %s, %s)
         """, (event_type, event_date, org_id, location_id))
 
@@ -1098,11 +1098,11 @@ def admin_new_event():
         return redirect("/admin/events")
 
     # this will give us a list of the orgs we have in the database so the admin can choose from them instead of inserting the name everytime (for convenience)
-    cur.execute("SELECT org_id, name FROM Organization ORDER BY name;")
+    cur.execute("SELECT org_id, name FROM freefoodmap.Organization ORDER BY name;")
     organizations = cur.fetchall()
 
     # same here but for locations
-    cur.execute("SELECT location_id, name FROM Location ORDER BY name;")
+    cur.execute("SELECT location_id, name FROM freefoodmap.Location ORDER BY name;")
     locations = cur.fetchall()
 
     cur.close()
@@ -1145,7 +1145,7 @@ def volunteer_dashboard():
     # this query will retrieve all the events
     cur.execute("""
         SELECT event_id, type, date
-        FROM Event
+        FROM freefoodmap.Event
         WHERE date >= CURRENT_DATE
         ORDER BY date ASC;
     """)
@@ -1154,8 +1154,8 @@ def volunteer_dashboard():
     # and this will give back the events the volunteer is signed up for
     cur.execute("""
         SELECT E.event_id, E.type, E.date
-        FROM Event E
-        JOIN VolunteerAt V ON E.event_id = V.event_id
+        FROM freefoodmap.Event E
+        JOIN freefoodmap.VolunteerAt V ON E.event_id = V.event_id
         WHERE V.user_id = %s
         ORDER BY E.date ASC;
     """, (user_id,))
@@ -1188,7 +1188,7 @@ def org_locations():
 
     cur.execute("""
         SELECT location_id, name, address, zip_code, service_type
-        FROM Location
+        FROM freefoodmap.Location
         WHERE org_id = %s
         ORDER BY location_id;
     """, (org_id,))
@@ -1228,9 +1228,9 @@ def org_reports():
         SELECT R.report_id, R.type, R.description, R.status, R.report_date,
                L.name AS location_name,
                U.username AS reported_by
-        FROM Report R
-        JOIN Location L ON R.location_id = L.location_id
-        JOIN "user" U ON R.user_id = U.user_id
+        FROM freefoodmap.Report R
+        JOIN freefoodmap.ocation L ON R.location_id = L.location_id
+        JOIN freefoodmap.appuser U ON R.user_id = U.user_id
         WHERE L.org_id = %s
         ORDER BY R.report_date DESC;
     """, (org_id,))
@@ -1270,7 +1270,7 @@ def org_events():
 
     cur.execute("""
         SELECT event_id, type, date
-        FROM Event
+        FROM freefoodmap.Event
         WHERE org_id = %s
         ORDER BY date DESC;
     """, (org_id,))
@@ -1309,7 +1309,7 @@ def volunteer_signup(event_id):
 
     # we don't want to allow a volunteer to sign up for an event more than once
     cur.execute("""
-        SELECT 1 FROM VolunteerAt
+        SELECT 1 FROM freefoodmap.VolunteerAt
         WHERE user_id = %s AND event_id = %s
     """, (user_id, event_id))
 
@@ -1317,7 +1317,7 @@ def volunteer_signup(event_id):
     # once we make sure that the volunteer has not signed up for this event before, we will add them to the table
     if not exists:
         cur.execute("""
-            INSERT INTO VolunteerAt (user_id, event_id)
+            INSERT INTO freefoodmap.VolunteerAt (user_id, event_id)
             VALUES (%s, %s)
         """, (user_id, event_id))
         conn.commit()
@@ -1344,7 +1344,7 @@ def admin_users():
 
     cur.execute("""
         SELECT user_id, username, email, role, org_id
-        FROM "user"
+        FROM freefoodmap.appuser
         WHERE role != 'admin'
         ORDER BY user_id;
     """)
@@ -1387,7 +1387,7 @@ def edit_user(user_id):
         org_id = request.form.get("org_id") or None
 
         cur.execute("""
-            UPDATE "user"
+            UPDATE freefoodmap.appuser
             SET username = %s,
                 email = %s,
                 role = %s,
@@ -1403,12 +1403,12 @@ def edit_user(user_id):
 
     cur.execute("""
         SELECT user_id, username, email, role, org_id
-        FROM "user"
+        FROM freefoodmap.appuser
         WHERE user_id = %s
     """, (user_id,))
     u = cur.fetchone()
 
-    cur.execute("SELECT org_id, name FROM Organization ORDER BY name;")
+    cur.execute("SELECT org_id, name FROM freefoodmap.Organization ORDER BY name;")
     organizations = cur.fetchall()
 
     cur.close()
@@ -1438,7 +1438,7 @@ def delete_user(user_id):
     conn = get_db_connection()
     cur = conn.cursor()
 
-    cur.execute("DELETE FROM \"user\" WHERE user_id = %s", (user_id,))
+    cur.execute("DELETE FROM freefoodmap.appuser WHERE user_id = %s", (user_id,))
     conn.commit()
 
     cur.close()
@@ -1479,7 +1479,7 @@ def search_zip():
                        organization_name,
                        next_event_date,
                        has_event
-                FROM ZipcodeLocationView
+                FROM freefoodmap.ZipcodeLocationView
                 WHERE zip_code = %s
                 ORDER BY location_name;
                 """, (zipcode,))
