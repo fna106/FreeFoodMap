@@ -85,7 +85,7 @@ The system is built around:
 ## 1. Initial Data Collection
 - ~500+ locations collected (primarily Pennsylvania)
 - Sources:
-  - PA211 (scraping)
+  - Web scraping
   - Organization websites
   - Manual validation
 
@@ -178,11 +178,11 @@ Appear when users search:
 - [X] Admin system
 - [X] User registration + roles
 - [X] ~500+ locations
-- [ ] Migration to Google Cloud (In Progress)
+- [X] Migration to Google Cloud (In Progress)
 - [ ] Domain integration (freefoodmap.org) (In Progress)
 - [ ] Scraping improvements (In Progress)
 - [ ] Data coverage (beyond PA)
-- [ ] UI/UX improvements
+- [ ] UI/UX improvements (In Progress)
 - [ ] Automation pipeline
 - [ ] SEO optimization
 
