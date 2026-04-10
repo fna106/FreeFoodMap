@@ -26,7 +26,7 @@ def verify_password(stored_hash, stored_salt, entered_password):
 
 
 # a function to take us to the home page
-@app.route("/")
+@app.route("/", methods=["GET", "POST"])
 def index():
     return render_template("index.html")
 
