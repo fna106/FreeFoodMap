@@ -1,4 +1,4 @@
-# Free Food Map
+# [Free Food Map] (https:freefoodmap.org):
 
 A centralized platform designed to help people quickly find free food resources (food pantries, community meals, etc.) in their area.
 
@@ -60,7 +60,7 @@ The goal is to make food access **faster, more reliable, and scalable across reg
 
 ## Infrastructure
 - Previously: Azure (App Service + DB)
-- Moving to: Google Cloud (lower cost, better scaling)
+- Moved to: Google Cloud (lower cost, better scaling)
 
 ## Domain
 - freefoodmap.org
