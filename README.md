@@ -1,4 +1,4 @@
-# [Free Food Map] (https:freefoodmap.org):
+# [Free Food Map] (https://freefoodmap.org):
 
 A centralized platform designed to help people quickly find free food resources (food pantries, community meals, etc.) in their area.
 
