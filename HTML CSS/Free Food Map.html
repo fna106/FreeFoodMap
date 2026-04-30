@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Free Food Map</title>
+    <link rel="stylesheet" href="https://use.typekit.net/jjw8ped.css">
+    <link rel="stylesheet" href="foodmapstylesheet.css">
+</head>
+<body>
+<div class="page-box">
+    <div class="header">
+        <a href="" id="nav-link"><p>Report a Problem</p></a>
+        <a href="" id="nav-link"><p>Login</p></a>
+    </div>
+<div class="inner-container">
+    <div class="intro-block">
+        <h1>Welcome to the Free Food Map Project</h1>
+        <p>Free Food Map connects people with accurate, up-to-date resources like food banks, churches, and community kitchens. Started by Penn State students and built with the help of a partner university in France, we combine global teamwork with local impact. We verify our listings in real-time so you can find reliable support instantly. Together, we are building a safer world where no one has to go hungry.</p>
+    </div>
+
+    <div class="search-and-map">
+
+        <!-- Search by Zipcode -->
+         {% if error_message %}
+            <div class="alert alert-danger">{{ error_message }}</div>
+        {% endif %}
+
+        <h2>Enter your zip code to find resources near you.</h2>
+            <div class="search-entry">
+            <div class="col-auto">
+                <input type="text"
+                       name="zipcode"
+                       class="form-control"
+                       placeholder="Enter ZIP code"
+                       maxlength="5"
+                       required
+                       pattern="^[0-9]{5}$">
+            </div>
+
+            <div class="col-auto">
+                <button class="btn-primary">Search</button>
+            </div>
+        </div>
+
+        {% if zipcode %}
+            <h3>Results for ZIP Code: {{ zipcode }}</h3>
+
+            {% if locations %}
+            <table class="form">
+                <thead class="table">
+                    <tr>
+                        <th>Location</th>
+                        <th>Details</th>
+                        <th>Organization</th>
+                        <th>Next Event</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for loc in locations %}
+                    <tr>
+
+                        <td>
+                            <strong>{{ loc.location_name }}</strong>
+                        </td>
+
+                        <td>
+                            <strong>Address:</strong> {{ loc.address }}<br>
+
+                            {% if loc.service_type %}
+                                <strong>Service Type:</strong> {{ loc.service_type }}<br>
+                            {% endif %}
+
+                            {% if loc.hours %}
+                                <strong>Hours:</strong> {{ loc.hours }}<br>
+                            {% endif %}
+
+                            {% if loc.contact_phone %}
+                                <strong>Phone:</strong> {{ loc.contact_phone }}<br>
+                            {% endif %}
+
+                            {% if loc.contact_email %}
+                                <strong>Email:</strong> {{ loc.contact_email }}<br>
+                            {% endif %}
+
+                            {% if loc.contact_web %}
+                                <strong>Website:</strong>
+                                <a href="{{ loc.contact_web }}" target="_blank">
+                                    {{ loc.contact_web }}
+                                </a><br>
+                            {% endif %}
+
+                            {% if loc.notes %}
+                                <strong>Notes:</strong> {{ loc.notes }}
+                            {% endif %}
+                        </td>
+
+                        <td>{{ loc.organization_name or "N/A" }}</td>
+
+                        <td>
+                            {% if loc.has_event %}
+                                {{ loc.next_event_date }}
+                            {% else %}
+                                <span class="text-muted">No upcoming events</span>
+                            {% endif %}
+                        </td>
+
+                        <td>
+
+                            <a href="/report-location/{{ loc.location_id }}">
+                               Report Issue
+                            </a>
+                        </td>
+
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% else %}
+                <p>No locations found for this ZIP code.</p>
+            {% endif %}
+        {% endif %}
+
+        {% if reported_message %}
+            <div class="alert alert-success">
+                {{ reported_message }}
+            </div>
+        {% endif %}
+    </div>
+    
+    <!-- Map Container -->
+    <div class="map-container">
+       <iframe 
+       src="https://www.google.com/maps/d/embed?mid=1QQFiKgTDZMWVyCHdAEqnI39A3YHwwc4&ehbc=2E312F" 
+       class="map">
+       </iframe>
+    </div>
+</div>
+    <div class="self-agrandizing-advertisement-for-charity-site">
+        <a href="www.tylergehr.design"><p>Designed by Tyler Gehr</p></a>
+    </div>
+</div>
+</body>
+</html>

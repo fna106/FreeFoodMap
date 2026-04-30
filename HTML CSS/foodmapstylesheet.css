@@ -1,0 +1,163 @@
+/* Page Wide Style */
+body {
+    font-family:Proxima Nova;
+    background-color:#F4E1E1;
+    text-align:center;
+}
+
+h1 {font-size:32px;font-weight:700;}
+p {font-size:18px;}
+/* End Page Wide Style */
+
+/* Header */
+.header {
+    display:flex;
+    flex-direction:row;
+    justify-content:right;
+    padding:15px 60px 15px 30px;
+    margin:0px 15px;
+    gap:35px;
+    /* Rule
+    border-bottom: 1.75px solid;
+    border-color: #000;
+    */
+}
+
+.header a {
+  position: relative;
+  color: #0059FF;
+  text-decoration: none;
+}
+
+.header a:hover {
+  color: #0049D0
+}
+
+.header a::before {
+  content: "";
+  position: absolute;
+  display: block;
+  width: 100%;
+  height: 2px;
+  bottom: 0;
+  left: 0;
+  background-color: #0049D0;
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+}
+
+.header a:hover::before {
+  transform: scaleX(1);
+}
+/* End Header */
+
+/* Card Styling for Page */
+.page-box {
+    border-radius:25px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    background-color:#fff;
+    min-width:800px;
+    max-width:1400px;
+    margin:auto;
+}
+
+/* Intro Section */
+.intro-block {
+    max-width:940px;
+    min-width:500px;
+}
+
+.inner-container {
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    flex-direction:column;
+    padding:30px;
+}
+
+/* Zip Search Styles */
+.form-control {
+    font-size:22px;
+    font-family:"Proxima Nova";
+    border:1px solid;
+    border-radius:360px;
+    padding:5px 15px 5px 15px;
+    display:inline-block;
+    width:150px;
+    text-align:center;
+}
+
+.search-entry {
+    display:flex;
+    flex-direction:row;
+    gap:20px;
+    justify-content:center;
+    align-content:center;
+}
+
+/* Button Styles */
+.btn-primary {
+    font-size:22px;
+    font-family:"Proxima Nova";
+    color:#0059FF;
+    background-color:#fff;
+    border:1px solid;
+    border-color:#0059FF;
+    border-radius:360px;
+    padding:5px 30px;
+    display:inline-block;
+    cursor:pointer;
+    transition-duration:0.3s;
+}
+
+.btn-primary:hover {
+    color:#fff;
+    background-color:#0059FF;
+}
+
+
+/* Map Styles */
+.map {
+    max-width:1385px;
+    min-width:775px;
+    max-height:650px;
+    min-height:500px;
+}
+
+.table {
+    border:1px solid;
+    padding:2px;
+}
+
+/* Self-Promotion (which Fatmah is insisting I add) */
+.self-agrandizing-advertisement-for-charity-site {
+    padding-bottom:5px;
+    font-size:10px!important;
+}
+
+.self-agrandizing-advertisement-for-charity-site a {
+  position: relative;
+  color: #D9D9D9;
+  text-decoration: none;
+}
+
+.self-agrandizing-advertisement-for-charity-site a:hover {
+  color: #D2D2D2;
+}
+
+.self-agrandizing-advertisement-for-charity-site a::before {
+  content: "";
+  position: absolute;
+  display: block;
+  width: 100%;
+  height: 2px;
+  bottom: 0;
+  left: 0;
+  background-color: #D9D9D9;
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+}
+
+.self-agrandizing-advertisement-for-charity-site a:hover::before {
+  transform: scaleX(1);
+}
