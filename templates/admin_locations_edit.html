@@ -25,6 +25,7 @@
             </div>
 
             <form method="POST" class="form-grid">
+                <input type="hidden" name="return_to" value="{{ return_to or '/admin/locations' }}">
                 <div class="field">
                     <label>Location Name</label>
                     <input name="name" value="{{ location.name if location else '' }}" required>
@@ -91,7 +92,7 @@
                 </div>
 
                 <button class="btn-primary" type="submit">Save Location</button>
-                <a class="btn-secondary" href="/admin/locations">Cancel</a>
+                <a class="btn-secondary" href="{{ return_to or '/admin/locations' }}">Cancel</a>
             </form>
         </section>
     </main>

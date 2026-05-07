@@ -40,6 +40,10 @@
                 <div class="alert alert-danger">{{ error_registration }}</div>
             {% endif %}
 
+            {% if organization_warning %}
+                <div class="alert alert-info">{{ organization_warning }}</div>
+            {% endif %}
+
             <form action="/register" method="POST" class="form-grid">
                 <div class="field">
                     <label>Full Name</label>

@@ -61,6 +61,18 @@ def normalize_url(url):
     return url
 
 
+def get_safe_return_url(default="/admin/locations"):
+    return_url = request.values.get("return_to") or request.referrer or default
+
+    if not return_url.startswith("/"):
+        return default
+
+    if return_url.startswith("//"):
+        return default
+
+    return return_url
+
+
 
 # using hashing SHA-1 and salt to create passwords for users without storing them in db
 
@@ -79,6 +91,20 @@ def verify_password(stored_hash, stored_salt, entered_password):
     return stored_hash == test_hash
 
 
+def load_organizations_for_form():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT org_id, name FROM freefoodmap.Organization ORDER BY name;")
+        organizations = cur.fetchall()
+        cur.close()
+        conn.close()
+        return organizations, None
+    except Exception:
+        app.logger.exception("Unable to load organizations.")
+        return [], "Organization choices are temporarily unavailable. You can still choose Other and type your organization name."
+
+
 # a function to take us to the home page
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -94,23 +120,17 @@ def public_map():
 # a function for the registration page
 @app.route("/register", methods=["GET", "POST"])
 def register():
-    conn = get_db_connection()
-    cur = conn.cursor()
-
     # this part send a query to the database to get all the organizations to display them if the org exists so the user can just choose it instead of entering the name
-    cur.execute("SELECT org_id, name FROM freefoodmap.Organization ORDER BY name;")
-    organizations = cur.fetchall()
-
+    organizations, organization_warning = load_organizations_for_form()
     roles = ["Org Staff", "Volunteer"]
 
     def registration_error(message):
-        cur.close()
-        conn.close()
         return render_template(
             "registration.html",
             organizations=organizations,
             roles=roles,
-            error_registration=message
+            error_registration=message,
+            organization_warning=organization_warning
         )
 
     if request.method == "POST":
@@ -150,12 +170,21 @@ def register():
         else:
             organization = org_choice if org_choice else None
 
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+        except Exception:
+            app.logger.exception("Registration database connection failed.")
+            return registration_error("Registration is temporarily unavailable because the database connection failed.")
+
         cur.execute("""
             SELECT 1 FROM freefoodmap.appuser
             WHERE LOWER(email) = LOWER(%s) OR LOWER(username) = LOWER(%s)
             LIMIT 1
         """, (email, username))
         if cur.fetchone():
+            cur.close()
+            conn.close()
             return registration_error("An approved account already uses that email or username.")
 
         cur.execute("""
@@ -165,6 +194,8 @@ def register():
             LIMIT 1
         """, (email, username))
         if cur.fetchone():
+            cur.close()
+            conn.close()
             return registration_error("A pending registration already uses that email or username.")
 
         # hashing password
@@ -186,12 +217,16 @@ def register():
             "registration.html",
             organizations=organizations,
             roles=roles,
+            organization_warning=organization_warning,
             success_message="Your registration request has been submitted and is pending approval."
         )
 
-    cur.close()
-    conn.close()
-    return render_template("registration.html", organizations=organizations, roles=roles)
+    return render_template(
+        "registration.html",
+        organizations=organizations,
+        roles=roles,
+        organization_warning=organization_warning
+    )
 
 
 
@@ -202,19 +237,26 @@ def login():
         email = request.form["email"]
         password = request.form["password"]
 
-        conn = get_db_connection()
-        cur = conn.cursor()
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
 
-        # this query checks if the email exists in the database
-        cur.execute("""
-            SELECT user_id, username, password_hash, salt, role, org_id
-            FROM freefoodmap.appuser
-            WHERE email = %s
-        """, (email,))
+            # this query checks if the email exists in the database
+            cur.execute("""
+                SELECT user_id, username, password_hash, salt, role, org_id
+                FROM freefoodmap.appuser
+                WHERE email = %s
+            """, (email,))
 
-        row = cur.fetchone()
-        cur.close()
-        conn.close()
+            row = cur.fetchone()
+            cur.close()
+            conn.close()
+        except Exception:
+            app.logger.exception("Login database lookup failed.")
+            return render_template(
+                "login.html",
+                error="Login is temporarily unavailable because the database connection failed."
+            )
 
         if row:
             user_id, username, stored_hash, salt, role, org_id = row
@@ -601,6 +643,7 @@ def admin_locations():
 @app.route("/admin/locations/new", methods=["GET", "POST"])
 def new_location():
     role = session.get("role")
+    return_to = get_safe_return_url()
 
     if role != "admin":
         return render_template("index.html")
@@ -632,7 +675,7 @@ def new_location():
         conn.commit()
         cur.close()
         conn.close()
-        return redirect("/admin/locations")
+        return redirect(return_to)
 
     cur.execute("SELECT org_id, name FROM freefoodmap.Organization ORDER BY name;")
     organizations = cur.fetchall()
@@ -640,12 +683,18 @@ def new_location():
     cur.close()
     conn.close()
 
-    return render_template("admin_locations_edit.html", location=None, organizations=organizations)
+    return render_template(
+        "admin_locations_edit.html",
+        location=None,
+        organizations=organizations,
+        return_to=return_to
+    )
 
 
 @app.route("/admin/locations/edit/<int:location_id>", methods=["GET", "POST"])
 def edit_location(location_id):
     role = session.get("role")
+    return_to = get_safe_return_url()
 
     if role != "admin":
         return render_template("index.html")
@@ -686,7 +735,7 @@ def edit_location(location_id):
         conn.commit()
         cur.close()
         conn.close()
-        return redirect("/admin/locations")
+        return redirect(return_to)
 
     cur.execute("""
         SELECT location_id, name, address, zip_code, service_type, org_id,
@@ -703,7 +752,7 @@ def edit_location(location_id):
     conn.close()
 
     if not row:
-        return redirect("/admin/locations")
+        return redirect(return_to)
 
     location = {
         "location_id": row[0],
@@ -719,7 +768,12 @@ def edit_location(location_id):
         "notes": row[10],
     }
 
-    return render_template("admin_locations_edit.html", location=location, organizations=organizations)
+    return render_template(
+        "admin_locations_edit.html",
+        location=location,
+        organizations=organizations,
+        return_to=return_to
+    )
 
 
 @app.route("/admin/locations/delete/<int:location_id>")
@@ -1808,46 +1862,59 @@ def search_zip():
             service_types=SERVICE_TYPES
         )
 
-    conn = get_db_connection()
-    cur = conn.cursor()
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
 
-    filters = ["zip_code = %s"]
-    params = [zipcode]
+        filters = ["zip_code = %s"]
+        params = [zipcode]
 
-    if service_type:
-        filters.append("service_type = %s")
-        params.append(service_type)
+        if service_type:
+            filters.append("service_type = %s")
+            params.append(service_type)
 
-    if organization:
-        filters.append("LOWER(COALESCE(organization_name, '')) LIKE %s")
-        params.append(f"%{organization.lower()}%")
+        if organization:
+            filters.append("LOWER(COALESCE(organization_name, '')) LIKE %s")
+            params.append(f"%{organization.lower()}%")
 
-    if has_hours:
-        filters.append("hours IS NOT NULL AND BTRIM(hours) <> ''")
+        if has_hours:
+            filters.append("hours IS NOT NULL AND BTRIM(hours) <> ''")
 
-    # showing the public users all the locations that are associated with the zipcode they searched for
-    cur.execute(f"""
-                SELECT location_id,
-                       location_name,
-                       address,
-                       zip_code,
-                       service_type,
-                       hours,
-                       contact_phone,
-                       contact_email,
-                       contact_web,
-                       notes,
-                       organization_name,
-                       next_event_date,
-                       has_event
-                FROM freefoodmap.ZipcodeLocationView
-                WHERE {" AND ".join(filters)}
-                ORDER BY location_name;
-                """, params)
+        # showing the public users all the locations that are associated with the zipcode they searched for
+        cur.execute(f"""
+                    SELECT location_id,
+                           location_name,
+                           address,
+                           zip_code,
+                           service_type,
+                           hours,
+                           contact_phone,
+                           contact_email,
+                           contact_web,
+                           notes,
+                           organization_name,
+                           next_event_date,
+                           has_event
+                    FROM freefoodmap.ZipcodeLocationView
+                    WHERE {" AND ".join(filters)}
+                    ORDER BY location_name;
+                    """, params)
 
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+    except Exception:
+        app.logger.exception("ZIP search database query failed.")
+        return render_template(
+            "public_map.html",
+            error_message="Search is temporarily unavailable because the database connection failed.",
+            locations=None,
+            zipcode=zipcode,
+            service_type=service_type,
+            organization=organization,
+            has_hours=has_hours,
+            service_types=SERVICE_TYPES
+        )
 
     locations = [
         {
