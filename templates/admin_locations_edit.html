@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if location %}Edit{% else %}Add{% endif %} Location</title>
+    <link rel="stylesheet" href="https://use.typekit.net/jjw8ped.css">
+    <link rel="stylesheet" href="/static/styles/foodmap.css">
+</head>
+<body>
+<div class="page-shell">
+    <header class="site-header">
+        <a class="brand" href="/">Free Food Map</a>
+        <nav class="nav-links" aria-label="Main navigation">
+            <a href="/admin">Admin</a>
+            <a href="/admin/locations">Locations</a>
+            <a class="danger" href="/logout">Logout</a>
+        </nav>
+    </header>
+
+    <main class="content">
+        <section class="panel form-page">
+            <div class="intro-block">
+                <h1>{% if location %}Edit{% else %}Add{% endif %} Location</h1>
+            </div>
+
+            <form method="POST" class="form-grid">
+                <div class="field">
+                    <label>Location Name</label>
+                    <input name="name" value="{{ location.name if location else '' }}" required>
+                </div>
+
+                <div class="field">
+                    <label>Address</label>
+                    <input name="address" value="{{ location.address if location else '' }}" required>
+                </div>
+
+                <div class="field">
+                    <label>ZIP Code</label>
+                    <input name="zip_code"
+                           value="{{ location.zip_code if location else '' }}"
+                           maxlength="5"
+                           pattern="^[0-9]{5}$"
+                           required>
+                </div>
+
+                <div class="field">
+                    <label>Service Type</label>
+                    <select name="service_type">
+                        {% set selected_type = location.service_type if location else '' %}
+                        <option value="">Unknown</option>
+                        {% for service in ["Food Bank", "Food Pantry", "Soup Kitchen", "Support Services", "Emergency Food", "Food Distribution", "Other"] %}
+                            <option value="{{ service }}" {% if selected_type == service %}selected{% endif %}>{{ service }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label>Organization</label>
+                    <select name="org_id">
+                        <option value="">None</option>
+                        {% for org in organizations %}
+                            <option value="{{ org[0] }}" {% if location and location.org_id == org[0] %}selected{% endif %}>{{ org[1] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label>Hours</label>
+                    <input name="hours" value="{{ location.hours if location else '' }}">
+                </div>
+
+                <div class="field">
+                    <label>Phone</label>
+                    <input name="contact_phone" value="{{ location.contact_phone if location else '' }}">
+                </div>
+
+                <div class="field">
+                    <label>Email</label>
+                    <input type="email" name="contact_email" value="{{ location.contact_email if location else '' }}">
+                </div>
+
+                <div class="field">
+                    <label>Website</label>
+                    <input type="url" name="contact_web" value="{{ location.contact_web if location else '' }}">
+                </div>
+
+                <div class="field">
+                    <label>Notes</label>
+                    <textarea name="notes">{{ location.notes if location else '' }}</textarea>
+                </div>
+
+                <button class="btn-primary" type="submit">Save Location</button>
+                <a class="btn-secondary" href="/admin/locations">Cancel</a>
+            </form>
+        </section>
+    </main>
+</div>
+</body>
+</html>
