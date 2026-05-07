@@ -2,9 +2,63 @@ from flask import Flask, render_template, request, redirect, session
 from postgres_database_configuration import get_db_connection
 import hashlib
 import os
+import re
+from urllib.parse import urlparse
 
 app = Flask(__name__)
 app.secret_key = os.getenv("APP_SECRET_KEY", "dev-secret")
+
+SERVICE_TYPES = [
+    "Food Bank",
+    "Food Pantry",
+    "Soup Kitchen",
+    "Support Services",
+    "Emergency Food",
+    "Food Distribution",
+    "Other",
+]
+
+
+def clean_text(value):
+    return value.strip() if value else ""
+
+
+def optional_text(value):
+    value = clean_text(value)
+    return value or None
+
+
+def is_valid_zip(zip_code):
+    return bool(re.fullmatch(r"\d{5}", clean_text(zip_code)))
+
+
+def is_valid_email(email):
+    return bool(re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", clean_text(email)))
+
+
+def normalize_phone(phone_number, required=False):
+    phone_number = clean_text(phone_number)
+    if not phone_number and not required:
+        return None
+
+    digits = re.sub(r"\D", "", phone_number)
+    if len(digits) != 10:
+        return None
+    return digits
+
+
+def normalize_url(url):
+    url = clean_text(url)
+    if not url:
+        return None
+
+    if not url.startswith(("http://", "https://")):
+        url = f"https://{url}"
+
+    parsed = urlparse(url)
+    if parsed.scheme not in ["http", "https"] or not parsed.netloc:
+        return None
+    return url
 
 
 
@@ -34,7 +88,7 @@ def index():
 # a function that will take us to the map page
 @app.route("/map")
 def public_map():
-    return render_template("public_map.html")
+    return render_template("public_map.html", service_types=SERVICE_TYPES)
 
 
 # a function for the registration page
@@ -49,23 +103,69 @@ def register():
 
     roles = ["Org Staff", "Volunteer"]
 
+    def registration_error(message):
+        cur.close()
+        conn.close()
+        return render_template(
+            "registration.html",
+            organizations=organizations,
+            roles=roles,
+            error_registration=message
+        )
+
     if request.method == "POST":
-        name = request.form["name"]
-        email = request.form["email"]
-        username = request.form["username"]
+        name = clean_text(request.form["name"])
+        email = clean_text(request.form["email"]).lower()
+        username = clean_text(request.form["username"])
         password = request.form["password"]
-        reason = request.form["reason"]
+        password_confirm = request.form.get("password_confirm", "")
+        reason = clean_text(request.form["reason"])
         role_requested = request.form["role"]
-        phone_number = request.form["phone_number"]
+        phone_number = normalize_phone(request.form["phone_number"], required=True)
 
         org_choice = request.form.get("organization")
         other_org = request.form.get("organization_other")
+
+        if not name or not username or not reason:
+            return registration_error("Please fill out all required fields.")
+
+        if not is_valid_email(email):
+            return registration_error("Please enter a valid email address.")
+
+        if not phone_number:
+            return registration_error("Please enter a valid 10-digit phone number.")
+
+        if role_requested not in roles:
+            return registration_error("Please choose a valid role.")
+
+        if len(password) < 8:
+            return registration_error("Password must be at least 8 characters.")
+
+        if password != password_confirm:
+            return registration_error("Passwords do not match.")
 
         # giving the user the option to add their org name after selecting "OTHER"
         if org_choice == "OTHER":
             organization = other_org.strip() if other_org else None
         else:
             organization = org_choice if org_choice else None
+
+        cur.execute("""
+            SELECT 1 FROM freefoodmap.appuser
+            WHERE LOWER(email) = LOWER(%s) OR LOWER(username) = LOWER(%s)
+            LIMIT 1
+        """, (email, username))
+        if cur.fetchone():
+            return registration_error("An approved account already uses that email or username.")
+
+        cur.execute("""
+            SELECT 1 FROM freefoodmap.ContributorRequest
+            WHERE decision = 'pending'
+              AND (LOWER(email) = LOWER(%s) OR LOWER(username) = LOWER(%s))
+            LIMIT 1
+        """, (email, username))
+        if cur.fetchone():
+            return registration_error("A pending registration already uses that email or username.")
 
         # hashing password
         salt, password_hash = sha1_hash(password)
@@ -336,19 +436,100 @@ def deny_user(request_id):
 @app.route("/suggest-location", methods=["GET", "POST"])
 def suggest_location():
     if request.method == "POST":
-        name = request.form["name"]
-        address = request.form["address"]
-        zip_code = request.form["zip_code"]
-        service_type = request.form["service_type"]
-        organization = request.form.get("organization")
-        hours = request.form.get("hours")
-        contact_phone = request.form.get("contact_phone")
-        contact_email = request.form.get("contact_email")
-        contact_web = request.form.get("contact_web")
-        notes = request.form.get("notes")
+        name = clean_text(request.form["name"])
+        address = clean_text(request.form["address"])
+        zip_code = clean_text(request.form["zip_code"])
+        service_type = clean_text(request.form["service_type"])
+        organization = optional_text(request.form.get("organization"))
+        hours = optional_text(request.form.get("hours"))
+        contact_phone = normalize_phone(request.form.get("contact_phone"))
+        contact_email = optional_text(request.form.get("contact_email"))
+        contact_web = normalize_url(request.form.get("contact_web"))
+        source_url = normalize_url(request.form.get("source_url"))
+        verified_recently = request.form.get("verified_recently") == "yes"
+        notes = optional_text(request.form.get("notes"))
+
+        if not name or not address or not is_valid_zip(zip_code):
+            return render_template(
+                "suggest_location.html",
+                service_types=SERVICE_TYPES,
+                error_message="Please provide a location name, full address, and valid 5-digit ZIP code."
+            )
+
+        if service_type not in SERVICE_TYPES:
+            return render_template(
+                "suggest_location.html",
+                service_types=SERVICE_TYPES,
+                error_message="Please choose a valid service type."
+            )
+
+        if request.form.get("contact_phone") and not contact_phone:
+            return render_template(
+                "suggest_location.html",
+                service_types=SERVICE_TYPES,
+                error_message="Please enter a valid 10-digit phone number, or leave it blank."
+            )
+
+        if contact_email and not is_valid_email(contact_email):
+            return render_template(
+                "suggest_location.html",
+                service_types=SERVICE_TYPES,
+                error_message="Please enter a valid contact email, or leave it blank."
+            )
+
+        if request.form.get("contact_web") and not contact_web:
+            return render_template(
+                "suggest_location.html",
+                service_types=SERVICE_TYPES,
+                error_message="Please enter a valid website URL, or leave it blank."
+            )
+
+        if request.form.get("source_url") and not source_url:
+            return render_template(
+                "suggest_location.html",
+                service_types=SERVICE_TYPES,
+                error_message="Please enter a valid source URL, or leave it blank."
+            )
+
+        note_parts = []
+        if notes:
+            note_parts.append(notes)
+        if source_url:
+            note_parts.append(f"Source: {source_url}")
+        if verified_recently:
+            note_parts.append("Submitter says they verified this recently.")
+        notes = "\n".join(note_parts) or None
 
         conn = get_db_connection()
         cur = conn.cursor()
+
+        cur.execute("""
+            SELECT name FROM freefoodmap.Location
+            WHERE LOWER(address) = LOWER(%s)
+               OR (LOWER(name) = LOWER(%s) AND zip_code = %s)
+            LIMIT 1
+        """, (address, name, zip_code))
+        existing_location = cur.fetchone()
+
+        cur.execute("""
+            SELECT name FROM freefoodmap.LocationSuggestion
+            WHERE status = 'pending'
+              AND (
+                  LOWER(address) = LOWER(%s)
+                  OR (LOWER(name) = LOWER(%s) AND zip_code = %s)
+              )
+            LIMIT 1
+        """, (address, name, zip_code))
+        pending_suggestion = cur.fetchone()
+
+        if existing_location or pending_suggestion:
+            cur.close()
+            conn.close()
+            return render_template(
+                "suggest_location.html",
+                service_types=SERVICE_TYPES,
+                error_message="This looks like a duplicate of an existing or pending location. Please report an issue instead if the current listing needs a correction."
+            )
 
             # this part takes all the info they provided and submit it to our LocationSuggestion table, where the admin will review it to make sure it's accurate first before adding it to the map
         cur.execute("""
@@ -367,12 +548,13 @@ def suggest_location():
 
         return render_template(
             "suggest_location.html",
+            service_types=SERVICE_TYPES,
             success_message=(
                 "Thank you for contributing to our map and helping us combat hunger. "
                 "We will add your suggestion once we approve it."
             )
         )
-    return render_template("suggest_location.html")
+    return render_template("suggest_location.html", service_types=SERVICE_TYPES)
 
 # this page will show the admin all the location that exist in the database
 @app.route("/admin/locations")
@@ -416,6 +598,149 @@ def admin_locations():
     return render_template("admin_locations.html", locations=locations)
 
 
+@app.route("/admin/locations/new", methods=["GET", "POST"])
+def new_location():
+    role = session.get("role")
+
+    if role != "admin":
+        return render_template("index.html")
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    if request.method == "POST":
+        org_id = request.form.get("org_id") or None
+
+        cur.execute("""
+            INSERT INTO freefoodmap.Location
+            (name, address, zip_code, service_type, org_id,
+             hours, contact_phone, contact_email, contact_web, notes)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            request.form["name"],
+            request.form["address"],
+            request.form["zip_code"],
+            request.form.get("service_type") or None,
+            org_id,
+            request.form.get("hours"),
+            request.form.get("contact_phone"),
+            request.form.get("contact_email"),
+            request.form.get("contact_web"),
+            request.form.get("notes"),
+        ))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+        return redirect("/admin/locations")
+
+    cur.execute("SELECT org_id, name FROM freefoodmap.Organization ORDER BY name;")
+    organizations = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    return render_template("admin_locations_edit.html", location=None, organizations=organizations)
+
+
+@app.route("/admin/locations/edit/<int:location_id>", methods=["GET", "POST"])
+def edit_location(location_id):
+    role = session.get("role")
+
+    if role != "admin":
+        return render_template("index.html")
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    if request.method == "POST":
+        org_id = request.form.get("org_id") or None
+
+        cur.execute("""
+            UPDATE freefoodmap.Location
+            SET name = %s,
+                address = %s,
+                zip_code = %s,
+                service_type = %s,
+                org_id = %s,
+                hours = %s,
+                contact_phone = %s,
+                contact_email = %s,
+                contact_web = %s,
+                notes = %s
+            WHERE location_id = %s
+        """, (
+            request.form["name"],
+            request.form["address"],
+            request.form["zip_code"],
+            request.form.get("service_type") or None,
+            org_id,
+            request.form.get("hours"),
+            request.form.get("contact_phone"),
+            request.form.get("contact_email"),
+            request.form.get("contact_web"),
+            request.form.get("notes"),
+            location_id,
+        ))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+        return redirect("/admin/locations")
+
+    cur.execute("""
+        SELECT location_id, name, address, zip_code, service_type, org_id,
+               hours, contact_phone, contact_email, contact_web, notes
+        FROM freefoodmap.Location
+        WHERE location_id = %s
+    """, (location_id,))
+    row = cur.fetchone()
+
+    cur.execute("SELECT org_id, name FROM freefoodmap.Organization ORDER BY name;")
+    organizations = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    if not row:
+        return redirect("/admin/locations")
+
+    location = {
+        "location_id": row[0],
+        "name": row[1],
+        "address": row[2],
+        "zip_code": row[3],
+        "service_type": row[4],
+        "org_id": row[5],
+        "hours": row[6],
+        "contact_phone": row[7],
+        "contact_email": row[8],
+        "contact_web": row[9],
+        "notes": row[10],
+    }
+
+    return render_template("admin_locations_edit.html", location=location, organizations=organizations)
+
+
+@app.route("/admin/locations/delete/<int:location_id>")
+def delete_location(location_id):
+    role = session.get("role")
+
+    if role != "admin":
+        return render_template("index.html")
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("DELETE FROM freefoodmap.Location WHERE location_id = %s", (location_id,))
+    conn.commit()
+
+    cur.close()
+    conn.close()
+
+    return redirect("/admin/locations")
+
+
 # public users can also report locations if they have incorrect information, in this part the admin
 @app.route("/report-location/<int:location_id>")
 def report_location(location_id):
@@ -441,6 +766,14 @@ def report_location(location_id):
     """, (location_id,))
 
     row = cur.fetchone()
+
+    if not row:
+        cur.close()
+        conn.close()
+        return render_template(
+            "public_map.html",
+            error_message="That location could not be found."
+        )
 
     (location_id, location_name, address, zip_code, service_type,
      hours, phone, email, web, notes, org_name) = row
@@ -498,8 +831,8 @@ def admin_reports():
                            L.name AS location_name,
                            L.location_id
                     FROM freefoodmap.Report R
-                             LEFT JOIN appuser U ON R.user_id = U.user_id
-                             LEFT JOIN Location L ON R.location_id = L.location_id
+                             LEFT JOIN freefoodmap.appuser U ON R.user_id = U.user_id
+                             LEFT JOIN freefoodmap.Location L ON R.location_id = L.location_id
                     WHERE R.status != 'Resolved'
                     ORDER BY R.report_date DESC;
                 """)
@@ -856,7 +1189,7 @@ def approve_location_suggestion():
                             contact_web,
                             notes,
                             submitted_at
-                     FROM LocationSuggestion
+                     FROM freefoodmap.LocationSuggestion
                      WHERE status = 'pending'
                      ORDER BY submitted_at DESC
                      """)
@@ -1229,8 +1562,8 @@ def org_reports():
                L.name AS location_name,
                U.username AS reported_by
         FROM freefoodmap.Report R
-        JOIN freefoodmap.ocation L ON R.location_id = L.location_id
-        JOIN freefoodmap.appuser U ON R.user_id = U.user_id
+        JOIN freefoodmap.Location L ON R.location_id = L.location_id
+        LEFT JOIN freefoodmap.appuser U ON R.user_id = U.user_id
         WHERE L.org_id = %s
         ORDER BY R.report_date DESC;
     """, (org_id,))
@@ -1247,7 +1580,7 @@ def org_reports():
             "status": r[3],
             "report_date": r[4],
             "location_name": r[5],
-            "reported_by": r[6]
+            "username": r[6] if r[6] else "Anonymous"
         } for r in rows
     ]
 
@@ -1269,10 +1602,11 @@ def org_events():
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT event_id, type, date
-        FROM freefoodmap.Event
-        WHERE org_id = %s
-        ORDER BY date DESC;
+        SELECT E.event_id, E.type, E.date
+        FROM freefoodmap.Event E
+        JOIN freefoodmap.Location L ON E.location_id = L.location_id
+        WHERE L.org_id = %s
+        ORDER BY E.date DESC;
     """, (org_id,))
 
     rows = cur.fetchall()
@@ -1451,21 +1785,48 @@ def delete_user(user_id):
 # we want public users to be able to all the locations that already exist in our database and search them using zipcode number
 @app.route("/search-zip")
 def search_zip():
-    zipcode = request.args.get("zipcode")
+    zipcode = clean_text(request.args.get("zipcode"))
+    service_type = clean_text(request.args.get("service_type"))
+    organization = clean_text(request.args.get("organization"))
+    has_hours = request.args.get("has_hours") == "yes"
 
-    if not zipcode or not zipcode.isdigit() or len(zipcode) != 5:
+    if not is_valid_zip(zipcode):
         return render_template(
             "public_map.html",
             error_message="Please enter a valid 5-digit ZIP code.",
             locations=None,
-            zipcode=None
+            zipcode=None,
+            service_types=SERVICE_TYPES
+        )
+
+    if service_type and service_type not in SERVICE_TYPES:
+        return render_template(
+            "public_map.html",
+            error_message="Please choose a valid service type.",
+            locations=None,
+            zipcode=zipcode,
+            service_types=SERVICE_TYPES
         )
 
     conn = get_db_connection()
     cur = conn.cursor()
 
+    filters = ["zip_code = %s"]
+    params = [zipcode]
+
+    if service_type:
+        filters.append("service_type = %s")
+        params.append(service_type)
+
+    if organization:
+        filters.append("LOWER(COALESCE(organization_name, '')) LIKE %s")
+        params.append(f"%{organization.lower()}%")
+
+    if has_hours:
+        filters.append("hours IS NOT NULL AND BTRIM(hours) <> ''")
+
     # showing the public users all the locations that are associated with the zipcode they searched for
-    cur.execute("""
+    cur.execute(f"""
                 SELECT location_id,
                        location_name,
                        address,
@@ -1480,9 +1841,9 @@ def search_zip():
                        next_event_date,
                        has_event
                 FROM freefoodmap.ZipcodeLocationView
-                WHERE zip_code = %s
+                WHERE {" AND ".join(filters)}
                 ORDER BY location_name;
-                """, (zipcode,))
+                """, params)
 
     rows = cur.fetchall()
     cur.close()
@@ -1510,7 +1871,11 @@ def search_zip():
     return render_template(
         "public_map.html",
         locations=locations,
-        zipcode=zipcode
+        zipcode=zipcode,
+        service_type=service_type,
+        organization=organization,
+        has_hours=has_hours,
+        service_types=SERVICE_TYPES
     )
 
 
