@@ -55,7 +55,9 @@
         {% endif %}
 
         {% if suggestions %}
-        <table class="table table-bordered table-hover">
+        <input class="form-control mb-3" data-table-filter="#suggestions-table" placeholder="Search suggestions, ZIP codes, organizations, or services">
+
+        <table id="suggestions-table" class="table table-bordered table-hover">
             <thead class="table-primary">
                 <tr>
                     <th>Location Name</th>
@@ -112,5 +114,6 @@
     </div>
 </div>
 
+<script src="/static/scripts/admin_table_filter.js"></script>
 </body>
 </html>
