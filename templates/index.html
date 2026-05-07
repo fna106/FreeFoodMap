@@ -1,95 +1,71 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Free Food Map</title>
-
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    <style>
-        body {
-            background-color: #f5f7fa;
-        }
-        .hero-box {
-            background: white;
-            padding: 40px;
-            margin-top: 60px;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-        .btn-large {
-            padding: 10px 18px;
-            font-size: 1rem;
-            border-radius: 8px;
-        }
-        .btn-auth {
-            padding: 8px 16px;
-            font-size: 0.95rem;
-        }
-        hr {
-            margin-top: 40px;
-            margin-bottom: 25px;
-        }
-        .signup-note {
-            font-size: 0.85rem;
-            color: #555;
-            margin-top: 6px;
-        }
-    </style>
+    <link rel="stylesheet" href="https://use.typekit.net/jjw8ped.css">
+    <link rel="stylesheet" href="/static/styles/foodmap.css">
 </head>
-
 <body>
-
-<nav class="navbar navbar-light bg-white shadow-sm mb-4">
-    <div class="container d-flex justify-content-between align-items-center">
-
-        <a class="navbar-brand fw-bold" href="/">Free Food Map</a>
-
-        <div>
-            <a class="btn btn-link" href="/map">Map</a>
-
+<div class="page-shell">
+    <header class="site-header">
+        <a class="brand" href="/">Free Food Map</a>
+        <nav class="nav-links" aria-label="Main navigation">
+            <a href="/map">Map</a>
+            <a href="/suggest-location">Suggest Location</a>
             {% if session.user_id %}
-                <a class="btn btn-link text-danger" href="/logout">Logout</a>
+                <a class="danger" href="/logout">Logout</a>
             {% else %}
-                <a class="btn btn-link" href="/login">Login</a>
-                <a class="btn btn-link" href="/register">Sign Up</a>
+                <a href="/login">Login</a>
+                <a href="/register">Sign Up</a>
             {% endif %}
-        </div>
+        </nav>
+    </header>
 
-    </div>
-</nav>
-
-
-<div class="container col-lg-8">
-    <div class="hero-box">
-
-        <h1 class="mb-3 fw-bold">Free Food Map Project</h1>
-
-        <p class="lead">
-            Helping communities access free food resources across Pennsylvania.
-            Explore the map, suggest a new location, or apply for an account if you volunteer or work with a food distribution organization.
-        </p>
-
-        <div class="mt-4 d-grid gap-3">
-            <a href="/map" class="btn btn-primary btn-large w-100">View Map</a>
-            <a href="/suggest-location" class="btn btn-primary btn-large w-100">Suggest a Location</a>
-        </div>
-
-        <hr class="my-4">
-
-        <div class="text-center mb-3">
-            <a href="/login" class="btn btn-outline-primary btn-auth">Log In</a>
-        </div>
-
-        <div class="text-center">
-            <a href="/register" class="btn btn-outline-primary btn-auth">Sign Up</a>
-            <p class="signup-note">
-                Sign up if you are a volunteer, organization staff member, or manage a food distribution site.
+    <main class="content">
+        <section class="intro-block">
+            <h1>Welcome to the Free Food Map Project</h1>
+            <p>
+                Free Food Map connects people with food banks, pantries, churches, and community kitchens.
+                The project combines structured data, public suggestions, and admin review so people can find
+                nearby food resources faster and with more confidence.
             </p>
+        </section>
+
+        <div class="notice">
+            Please call a location before visiting. Hours and food availability can change quickly.
         </div>
 
-    </div>
-</div>
+        <section class="panel">
+            <div class="intro-block">
+                <h2>Find Free Food Near You</h2>
+                <p>Search by ZIP code, review the details, and report anything that looks outdated.</p>
+            </div>
 
+            <form action="/search-zip" method="GET" class="search-entry">
+                <label class="sr-only" for="zipcode">ZIP code</label>
+                <input id="zipcode"
+                       type="text"
+                       name="zipcode"
+                       class="zip-input"
+                       placeholder="ZIP code"
+                       maxlength="5"
+                       required
+                       pattern="^[0-9]{5}$">
+                <button class="btn-primary" type="submit">Search</button>
+            </form>
+
+            <div class="action-row" style="margin-top: 22px;">
+                <a href="/map" class="btn-primary">Open Full Map</a>
+                <a href="/suggest-location" class="btn-secondary">Suggest a Location</a>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-credit">
+        <a href="https://www.tylergehr.design">Designed by Tyler Gehr</a>
+    </footer>
+</div>
 </body>
 </html>
