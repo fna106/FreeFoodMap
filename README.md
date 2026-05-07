@@ -1,4 +1,4 @@
-# Free Food Map
+# Free Food Map:
 
 A centralized platform designed to help people quickly find free food resources (food pantries, community meals, etc.) in their area.
 
@@ -61,7 +61,7 @@ The goal is to make food access **faster, more reliable, and scalable across reg
 
 ## Infrastructure
 - Previously: Azure (App Service + DB)
-- Moving to: Google Cloud (lower cost, better scaling)
+- Moved to: Google Cloud (lower cost, better scaling)
 
 ## Domain
 - freefoodmap.org
@@ -86,7 +86,7 @@ The system is built around:
 ## 1. Initial Data Collection
 - ~500+ locations collected (primarily Pennsylvania)
 - Sources:
-  - PA211 (scraping)
+  - Web scraping
   - Organization websites
   - Manual validation
 
@@ -109,7 +109,7 @@ We are moving toward a **hybrid validation system**:
 ### Goal
 Create a **semi open-source dataset** where:
 - data is scalable
-- accuracy is maintained through feedback loops
+- accuracy is maintained througha public feedback loops
 
 ---
 
@@ -121,6 +121,7 @@ Create a **semi open-source dataset** where:
   - 403 blocks
   - dynamic websites
   - inconsistent structures
+  - robots.txt
 
 ---
 
@@ -164,8 +165,8 @@ Appear when users search:
 ---
 
 # Project Structure
-/templates → HTML pages (Flask views)
-/app.py → Flask backend
+/templates → HTML pages
+/main.py → Flask backend
 /database → PostgreSQL schema
 
 
@@ -191,11 +192,11 @@ Appear when users search:
 - [X] Admin system
 - [X] User registration + roles
 - [X] ~500+ locations
-- [ ] Migration to Google Cloud (In Progress)
-- [ ] Domain integration (freefoodmap.org) (In Progress)
+- [X] Migration to Google Cloud
+- [X] Domain integration (freefoodmap.org)
 - [ ] Scraping improvements (In Progress)
 - [ ] Data coverage (beyond PA)
-- [ ] UI/UX improvements
+- [ ] UI/UX improvements (In Progress)
 - [ ] Automation pipeline
 - [ ] SEO optimization
 
