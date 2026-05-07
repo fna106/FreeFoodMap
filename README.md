@@ -56,7 +56,8 @@ The goal is to make food access **faster, more reliable, and scalable across reg
 
 ## Frontend
 - HTML (Flask templates)
-- Bootstrap (styling)
+- Custom HTML/CSS styling
+- Leaflet + OpenStreetMap for the public map
 
 ## Infrastructure
 - Previously: Azure (App Service + DB)
@@ -172,6 +173,18 @@ Appear when users search:
 
 # Current Status
 
+## Completed in the latest implementation pass
+- Public pages now use the side HTML/CSS design direction.
+- The public map uses Leaflet + OpenStreetMap instead of a Google My Maps iframe.
+- ZIP search supports service type, organization, and listed-hours filters.
+- Public location suggestions now validate ZIP, email, phone, and URL fields.
+- Location suggestions now warn on basic duplicates before creating a pending record.
+- Suggestion submissions can include a source link and a recently verified checkbox.
+- Login includes a show/hide password control and clearer registration guidance.
+- Registration includes confirm password, password strength help, stronger validation, and duplicate account checks.
+- Major admin tables now include client-side search.
+- Public pages include basic SEO metadata and accessibility labels.
+
 - [X] Backend (Flask)
 - [X] Database (PostgreSQL)
 - [X] Public map + search
@@ -194,10 +207,11 @@ Appear when users search:
 
 ### Public Experience
 - [ ] Add “Call before visiting” notice
-- [ ] Add filters (distance, service type, hours)
+- [X] Add basic filters (service type, organization, listed hours)
+- [ ] Add distance filter after locations have latitude/longitude
 - [ ] Add “last verified” field
 - [ ] Add verification badges
-- [ ] Improve map integration (replace iframe long-term)
+- [X] Improve map integration (replace iframe long-term)
 
 ---
 
@@ -206,7 +220,7 @@ Appear when users search:
 - [ ] Add verification tracking:
   - [ ] last updated
   - [ ] verified by
-- [ ] Add duplicate detection for locations
+- [X] Add basic duplicate detection for suggested locations
 - [ ] Add edit-before-approve for suggestions
 
 ---
@@ -229,7 +243,7 @@ Appear when users search:
 ## Medium Priority
 
 ### Admin Tools
-- [ ] Add search and filters to all admin tables
+- [X] Add search to major admin tables
 - [ ] Add report categories (wrong hours, closed, etc.)
 - [ ] Add resolution notes for reports
 - [ ] Add user status (active/pending/suspended)
@@ -255,9 +269,9 @@ Appear when users search:
 ---
 
 ### Forms & Validation
-- [ ] Add stronger validation (email, phone, ZIP)
-- [ ] Add duplicate warnings on submission
-- [ ] Add source link for location submissions
+- [X] Add stronger validation (email, phone, ZIP, URL)
+- [X] Add duplicate warnings on submission
+- [X] Add source link for location submissions
 - [ ] Add “I verified this” checkbox
 
 ---
@@ -280,9 +294,9 @@ Appear when users search:
 ---
 
 ### SEO & Accessibility
-- [ ] Structured metadata for search engines
+- [X] Structured metadata for search engines
 - [ ] Improve page speed
-- [ ] Add accessibility improvements (ARIA, keyboard nav)
+- [X] Add basic accessibility improvements (labels, ARIA navigation, responsive layout)
 - [ ] Improve content for discoverability
 
 ---
