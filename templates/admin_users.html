@@ -51,7 +51,9 @@
         <h2 class="text-center">User Management</h2>
         <p class="text-center text-muted mb-4">View, edit, and remove users.</p>
 
-        <table class="table table-striped table-hover">
+        <input class="form-control mb-3" data-table-filter="#users-table" placeholder="Search users, emails, roles, or organizations">
+
+        <table id="users-table" class="table table-striped table-hover">
             <thead class="table-light">
                 <tr>
                     <th>User ID</th>
@@ -89,5 +91,6 @@
     </div>
 </div>
 
+<script src="/static/scripts/admin_table_filter.js"></script>
 </body>
 </html>

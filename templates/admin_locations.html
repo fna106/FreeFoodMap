@@ -41,7 +41,8 @@
 <div class="container">
     <div class="page-box">
 
-        <a href="javascript:history.back()" class="btn btn-secondary mb-3">← Back</a>
+        <a href="javascript:history.back()" class="btn btn-secondary mb-3">Back</a>
+        <a href="/admin/locations/new" class="btn btn-primary mb-3">Add Location</a>
 
         <h2 class="mb-4">Manage Locations</h2>
 
@@ -49,7 +50,9 @@
             <div class="alert alert-danger">{{ error_locations }}</div>
         {% endif %}
 
-        <table class="table table-bordered table-hover">
+        <input class="form-control mb-3" data-table-filter="#locations-table" placeholder="Search locations, ZIP codes, services, or organizations">
+
+        <table id="locations-table" class="table table-bordered table-hover">
             <thead class="table-primary">
                 <tr>
                     <th>ID</th>
@@ -87,6 +90,7 @@
     </div>
 </div>
 
+<script src="/static/scripts/admin_table_filter.js"></script>
 </body>
 </html>
 

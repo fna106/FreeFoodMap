@@ -1,170 +1,148 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Registration Form</title>
-
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    <style>
-        body { background-color: #f5f7fa; }
-
-        .page-box {
-            background: white;
-            padding: 30px;
-            margin-top: 40px;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        }
-
-        a {
-            text-decoration: none;
-            color: inherit !important;
-        }
-
-        a:hover {
-            text-decoration: underline;
-        }
-
-        #other-org-box {
-            display: none;
-        }
-    </style>
-
-    <script>
-        function checkOrgSelection() {
-            const dropdown = document.getElementById("organization");
-            const otherBox = document.getElementById("other-org-box");
-            const otherInput = document.getElementById("org-other-input");
-
-            if (dropdown.value === "OTHER") {
-                otherBox.style.display = "block";
-                otherInput.required = true;
-            } else {
-                otherBox.style.display = "none";
-                otherInput.required = false;
-            }
-        }
-    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Request Access</title>
+    <meta name="description" content="Request a Free Food Map account as a volunteer or organization staff member.">
+    <link rel="stylesheet" href="https://use.typekit.net/jjw8ped.css">
+    <link rel="stylesheet" href="/static/styles/foodmap.css">
 </head>
 
 <body>
-
-<nav class="navbar navbar-light bg-white shadow-sm mb-4">
-    <div class="container d-flex justify-content-between align-items-center">
-
-        <a class="navbar-brand fw-bold" href="/">Free Food Map</a>
-
-        <div>
-            <a class="btn btn-link" href="/map">Map</a>
-
+<div class="page-shell">
+    <header class="site-header">
+        <a class="brand" href="/">Free Food Map</a>
+        <nav class="nav-links" aria-label="Main navigation">
+            <a href="/map">Map</a>
+            <a href="/suggest-location">Suggest Location</a>
             {% if session.user_id %}
-                <a class="btn btn-link text-danger" href="/logout">Logout</a>
+                <a class="danger" href="/logout">Logout</a>
             {% else %}
-                <a class="btn btn-link" href="/login">Login</a>
-                <a class="btn btn-link" href="/register">Sign Up</a>
+                <a href="/login">Login</a>
+                <a href="/register">Sign Up</a>
             {% endif %}
-        </div>
+        </nav>
+    </header>
 
-    </div>
-</nav>
-
-
-
-<div class="container col-lg-6">
-    <div class="page-box">
-
-        <h2 class="text-center mb-3">Registration Form</h2>
-        <p class="text-center">
-            Join us to push this project further.
-        </p>
-
-        {% if error_registration %}
-            <div class="alert alert-danger">
-                {{ error_registration }}
-            </div>
-        {% endif %}
-
-        <form action="/register" method="POST">
-
-            <div class="mb-3">
-                <label class="form-label">Full Name</label>
-                <input name="name" class="form-control" required>
+    <main class="content">
+        <section class="panel form-page">
+            <div class="intro-block">
+                <h1>Request Access</h1>
+                <p>Volunteer and organization accounts are reviewed before approval so the map stays trustworthy.</p>
             </div>
 
-            <div class="mb-3">
-                <label class="form-label">Email</label>
-                <input name="email" type="email" class="form-control" required>
-            </div>
+            {% if success_message %}
+                <div class="alert alert-success">{{ success_message }}</div>
+            {% endif %}
 
-            <div class="mb-3">
-                <label class="form-label">Phone Number (10 digits only)</label>
-                <input 
-                    name="phone_number" 
-                    type="text" 
-                    class="form-control"
-                    pattern="^[0-9]{10}$"
-                    maxlength="10"
-                    minlength="10"
-                    inputmode="numeric"
-                    placeholder="Enter 10 digits"
-                    required>
-                <small class="text-muted">Example: 8145551234</small>
-            </div>
+            {% if error_registration %}
+                <div class="alert alert-danger">{{ error_registration }}</div>
+            {% endif %}
 
-            <div class="mb-3">
-                <label class="form-label">Username</label>
-                <input name="username" class="form-control" required>
-            </div>
+            <form action="/register" method="POST" class="form-grid">
+                <div class="field">
+                    <label>Full Name</label>
+                    <input name="name" required>
+                </div>
 
-            <div class="mb-3">
-                <label class="form-label">Password</label>
-                <input name="password" type="password" class="form-control" required>
-            </div>
+                <div class="field">
+                    <label>Email</label>
+                    <input name="email" type="email" required>
+                </div>
 
-            <div class="mb-3">
-                <label class="form-label">Organization (Optional)</label>
-                <select name="organization" id="organization" 
-                        class="form-control" onchange="checkOrgSelection()">
-                    <option value="">None</option>
+                <div class="field">
+                    <label>Phone Number</label>
+                    <input name="phone_number"
+                           type="tel"
+                           pattern="^[0-9]{10}$"
+                           maxlength="10"
+                           minlength="10"
+                           inputmode="numeric"
+                           placeholder="8145551234"
+                           required>
+                </div>
 
-                    {% for org in organizations %}
-                        <option value="{{ org[1] }}">{{ org[1] }}</option>
-                    {% endfor %}
+                <div class="field">
+                    <label>Username</label>
+                    <input name="username" required>
+                </div>
 
-                    <option value="OTHER">Other (Not Listed)</option>
-                </select>
-            </div>
+                <div class="field">
+                    <label>Password</label>
+                    <input id="password" name="password" type="password" minlength="8" required>
+                    <small id="password-strength">Use at least 8 characters.</small>
+                </div>
 
-            <div id="other-org-box" class="mb-3">
-                <label class="form-label">Enter New Organization Name</label>
-                <input name="organization_other" 
-                       id="org-other-input" 
-                       class="form-control"
-                       placeholder="Type the name of your organization">
-            </div>
+                <div class="field">
+                    <label>Confirm Password</label>
+                    <input name="password_confirm" type="password" minlength="8" required>
+                </div>
 
-            <div class="mb-3">
-                <label class="form-label">Role Requested</label>
-                <select name="role" class="form-control" required>
-                    {% for role in roles %}
-                        <option value="{{ role }}">{{ role }}</option>
-                    {% endfor %}
-                </select>
-            </div>
+                <div class="field">
+                    <label>Organization (Optional)</label>
+                    <select name="organization" id="organization">
+                        <option value="">None</option>
+                        {% for org in organizations %}
+                            <option value="{{ org[1] }}">{{ org[1] }}</option>
+                        {% endfor %}
+                        <option value="OTHER">Other (Not Listed)</option>
+                    </select>
+                </div>
 
-            <div class="mb-3">
-                <label class="form-label">Why do you want to contribute?</label>
-                <textarea name="reason" class="form-control" required></textarea>
-            </div>
+                <div id="other-org-box" class="field" style="display: none;">
+                    <label>Enter New Organization Name</label>
+                    <input name="organization_other"
+                           id="org-other-input"
+                           placeholder="Type the name of your organization">
+                </div>
 
-            <button class="btn btn-primary w-100">Submit Registration</button>
-        </form>
+                <div class="field">
+                    <label>Role Requested</label>
+                    <select name="role" id="role" required>
+                        {% for role in roles %}
+                            <option value="{{ role }}">{{ role }}</option>
+                        {% endfor %}
+                    </select>
+                    <small id="role-help">Organization staff can manage locations and events. Volunteers can sign up for events.</small>
+                </div>
 
-        </div>
+                <div class="field">
+                    <label>Why do you want to contribute?</label>
+                    <textarea name="reason" required></textarea>
+                </div>
 
-    </div>
+                <button class="btn-primary" type="submit">Submit Registration</button>
+            </form>
+        </section>
+    </main>
 </div>
 
+<script>
+    const organization = document.getElementById("organization");
+    const otherBox = document.getElementById("other-org-box");
+    const otherInput = document.getElementById("org-other-input");
+    const password = document.getElementById("password");
+    const strength = document.getElementById("password-strength");
+
+    organization.addEventListener("change", () => {
+        const showOther = organization.value === "OTHER";
+        otherBox.style.display = showOther ? "block" : "none";
+        otherInput.required = showOther;
+    });
+
+    password.addEventListener("input", () => {
+        const value = password.value;
+        let label = "Use at least 8 characters.";
+
+        if (value.length >= 12 && /[0-9]/.test(value) && /[^A-Za-z0-9]/.test(value)) {
+            label = "Strong password.";
+        } else if (value.length >= 8) {
+            label = "Okay password. Add numbers or symbols to make it stronger.";
+        }
+
+        strength.textContent = label;
+    });
+</script>
 </body>
 </html>
-

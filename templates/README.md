@@ -6,6 +6,14 @@ These templates are rendered by the Flask backend and define the user interface 
 The Free Food Map is a platform designed to help users find free food resources through a centralized, searchable system.  
 It combines verified data, community contributions, and administrative workflows to maintain accuracy and scale.
 
+# Latest Template Implementation Pass:
+- `index.html`, `public_map.html`, `login.html`, `registration.html`, and `suggest_location.html` were updated toward the side HTML/CSS design.
+- `public_map.html` now uses Leaflet + OpenStreetMap, SEO metadata, location cards, and ZIP/service/organization/listed-hours filters.
+- `suggest_location.html` now supports source links and a recently verified checkbox; the backend stores those details in notes until dedicated columns exist.
+- `login.html` now has show/hide password and account request guidance.
+- `registration.html` now has confirm password, password strength help, role guidance, and stronger validation.
+- Major admin list pages now have client-side table search.
+
 # Page Breakdown:
 
 ## 1. index.html
@@ -38,13 +46,13 @@ Shows results in a table with:
 ### TO-DO:
   - [ ] “Call before visiting” notice
   - [ ] Distance-based search
-  - [ ] Filters (type, hours, organization)
+  - [X] Filters (type, hours, organization)
   - [ ] Last verified / updated field
   - [ ] Verification badges
   - [ ] Pagination
   - [ ] Suggest edit option
-  - [ ] Replace iframe with integrated map (future)
-  - [ ] SEO-friendly location cards
+  - [X] Replace iframe with integrated map
+  - [X] SEO-friendly location cards
 
 ## 3. suggest_location.html
 Allows users to submit new locations
@@ -59,7 +67,9 @@ Collects:
   - [ ] Source link field
   - [ ] Label Optional vs. Required fields
   - [ ] Address autocomplete
-  - [ ] Duplicate detection and Submission tracking
+  - [X] Duplicate detection
+  - [ ] File upload (optional proof)
+  - [ ] Submission tracking
   - [ ] Categorize type (event, recurring, etc.)
 
 ## 4. login.html
@@ -69,10 +79,10 @@ Displays error messages if the login info are inccorrect
 ### TO-DO:
   - [ ] Forgot password
   - [ ] Remember me
-  - [ ] Show/hide password
-  - [ ] Link to registration
-  - [ ] Pending approval message
-  - [ ] Better error feedback
+  - [X] Show/hide password
+  - [X] Link to registration
+  - [X] Pending approval message
+  - [X] Better error feedback
 
 ## 5. registration.html
 User registration form
@@ -83,12 +93,12 @@ Collects:
   - [ ] reason for joining
 
 ### TO-DO:
-  - [ ] Confirm password
-  - [ ] Password strength indicator
+  - [X] Confirm password
+  - [X] Password strength indicator
   - [ ] Email verification
   - [ ] Terms/privacy checkbox
   - [ ] Skills/interests field
-  - [ ] Role descriptions
+  - [X] Role descriptions
   - [ ] CAPTCHA (future)
 
 ## 6. volunteer_dashboard.html
@@ -170,7 +180,7 @@ Approve or deny user registrations
   - [ ] Submission date
   - [ ] Admin notes
   - [ ] Bulk actions
-  - [ ] Filters/search
+  - [X] Filters/search
   - [ ] Email notifications
 
 ## 12. admin_users.html
@@ -179,7 +189,7 @@ Edit or delete users
 
 ### TO-DO:
   - [ ] Organization name (not ID)
-  - [ ] Search and filters
+  - [X] Search and filters
   - [ ] Status (active/pending)
   - [ ] Last login
   - [ ] Export data
@@ -200,9 +210,7 @@ Manage approved locations
 Edit or delete locations
 
 ### TO-DO:
-  - [ ] Search and filters
-  - [ ] Order by column
-  - [ ] Multiple pages, 25-50 location per page
+  - [X] Search and filters
   - [ ] Last updated field
   - [ ] Report count
   - [ ] Status flags
@@ -215,7 +223,7 @@ Approve or reject
 
 ### TO-DO:
   - [ ] Edit before approve
-  - [ ] Duplicate detection
+  - [X] Duplicate detection
   - [ ] Source/proof field
   - [ ] Admin notes
   - [ ] Status filters
@@ -239,7 +247,7 @@ Edit, delete, create
 ### TO-DO:
   - [ ] Status (upcoming/completed)
   - [ ] Volunteer count
-  - [ ] Filters
+  - [X] Search/filter table
   - [ ] Sorting
   - [ ] Bulk actions
   - [ ] Recurring events
@@ -269,7 +277,7 @@ Create, edit or delete
 ### TO-DO:
   - [ ] Merge organizations (important)
   - [ ] Location count
-  - [ ] Search
+  - [X] Search
   - [ ] Duplicate detection
   - [ ] Status field
 
@@ -303,10 +311,10 @@ Edit organization name
   - Standardize success/error messages across all pages
 
 ##  3. Validation
-  - Improve input validation (ZIP, email, phone, URL)
+  - [X] Improve input validation (ZIP, email, phone, URL)
 
 ##  4. Search & Filters
-  - Add to all admin tables
+  - [X] Add to major admin tables
 
 ##  5. Audit Tracking
   - Track changes (who, when, what)
