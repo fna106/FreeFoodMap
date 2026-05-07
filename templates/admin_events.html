@@ -45,7 +45,9 @@
 
         <a href="/admin/events/new" class="btn btn-primary mb-3">+ Add New Event</a>
 
-        <table class="table table-bordered table-hover">
+        <input class="form-control mb-3" data-table-filter="#events-table" placeholder="Search events, dates, organizations, or locations">
+
+        <table id="events-table" class="table table-bordered table-hover">
             <thead class="table-info">
                 <tr>
                     <th>ID</th>
@@ -79,6 +81,7 @@
     </div>
 </div>
 
+<script src="/static/scripts/admin_table_filter.js"></script>
 </body>
 </html>
 
