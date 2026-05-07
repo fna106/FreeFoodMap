@@ -48,7 +48,9 @@
         <h2 class="mb-4">Reports</h2>
 
         {% if reports %}
-        <table class="table table-bordered table-hover">
+        <input class="form-control mb-3" data-table-filter="#reports-table" placeholder="Search reports, users, locations, or statuses">
+
+        <table id="reports-table" class="table table-bordered table-hover">
             <thead class="table-light">
                 <tr>
                     <th>ID</th>
@@ -99,5 +101,6 @@
     </div>
 </div>
 
+<script src="/static/scripts/admin_table_filter.js"></script>
 </body>
 </html>
