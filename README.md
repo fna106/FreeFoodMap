@@ -4,6 +4,24 @@ A centralized platform designed to help people quickly find free food resources 
 
 ---
 
+## Serverless PWA conversion
+
+The new application is in [app/](app/README.md). It replaces the continuously running Flask/PostgreSQL deployment with:
+
+- a Cloudflare Worker serving the PWA and API
+- Cloudflare D1 for locations, suggestions, reports, and review history
+- an installable Leaflet/OpenStreetMap experience
+- a protected admin review queue
+- scheduled geocoding and automatic GitHub deployments
+- on-demand cached search that avoids downloading all locations on page load
+- clustered maps, structured opening hours, and community visit updates
+- automated source verification with a human review queue
+- crawlable location pages and an open-data export
+
+The original Flask application remains in the repository as a migration reference until the new deployment is verified.
+
+---
+
 # Overview
 
 Access to free food resources is often difficult because information is:
@@ -51,17 +69,18 @@ The goal is to make food access **faster, more reliable, and scalable across reg
 # Tech Stack
 
 ## Backend
-- Flask (Python)
-- PostgreSQL (database)
+- Cloudflare Worker (TypeScript)
+- Cloudflare D1 (serverless SQL database)
 
 ## Frontend
-- HTML (Flask templates)
-- Custom HTML/CSS styling
+- Installable progressive web app
+- HTML, CSS, and JavaScript
 - Leaflet + OpenStreetMap for the public map
 
 ## Infrastructure
-- Previously: Azure (App Service + DB)
-- Moved to: Google Cloud (lower cost, better scaling)
+- Cloudflare Workers Static Assets + D1
+- GitHub Actions for tests, migrations, and deployment
+- Legacy Flask/PostgreSQL source retained during rollout
 
 ## Domain
 - freefoodmap.org
@@ -84,11 +103,12 @@ The system is built around:
 # Data Strategy
 
 ## 1. Initial Data Collection
-- ~500+ locations collected (primarily Pennsylvania)
+- 448 active, searchable Pennsylvania locations as of September 1, 2026
 - Sources:
   - Web scraping
   - Organization websites
   - Manual validation
+  - Pennsylvania 211 records cross-checked with U.S. Census coordinates
 
 ---
 
@@ -165,9 +185,10 @@ Appear when users search:
 ---
 
 # Project Structure
-/templates → HTML pages
-/main.py → Flask backend
-/database → PostgreSQL schema
+- `/app/public` - installable map interface
+- `/app/src` - Worker API and automation
+- `/app/migrations` - D1 schema and imported location data
+- `/templates` and `/main.py` - legacy Flask application
 
 
 ---
@@ -191,14 +212,15 @@ Appear when users search:
 - [X] Public map + search
 - [X] Admin system
 - [X] User registration + roles
-- [X] ~500+ locations
-- [X] Migration to Google Cloud
+- [X] 448 active Pennsylvania locations
+- [X] Serverless PWA conversion built and verified locally
+- [X] Production Cloudflare deployment and domain cutover
 - [X] Domain integration (freefoodmap.org)
-- [ ] Scraping improvements (In Progress)
+- [X] Conservative automated source verification pipeline
 - [ ] Data coverage (beyond PA)
 - [ ] UI/UX improvements (In Progress)
-- [ ] Automation pipeline
-- [ ] SEO optimization
+- [X] Automation pipeline
+- [X] SEO location pages, sitemap, and structured data
 
 ---
 
@@ -207,37 +229,38 @@ Appear when users search:
 ## High Priority
 
 ### Public Experience
-- [ ] Add “Call before visiting” notice
+- [X] Add “Call before visiting” notice
 - [X] Add basic filters (service type, organization, listed hours)
-- [ ] Add distance filter after locations have latitude/longitude
-- [ ] Add “last verified” field
-- [ ] Add verification badges
+- [X] Add nearby distance search after locations have latitude/longitude
+- [X] Add “last verified” and last reviewed fields
+- [X] Add verification badges and field-level source evidence
 - [X] Improve map integration (replace iframe long-term)
 
 ---
 
 ### Data Quality
 - [ ] Add report issue system improvements
-- [ ] Add verification tracking:
-  - [ ] last updated
-  - [ ] verified by
+- [X] Add verification tracking:
+  - [X] last reviewed and last verified dates
+  - [X] source URL and exact confirmed fields
 - [X] Add basic duplicate detection for suggested locations
-- [ ] Add edit-before-approve for suggestions
+- [X] Add edit-before-approve for suggestions
 
 ---
 
 ### Scraping & Automation
 - [ ] Build AI scraping agent
 - [ ] Build web crawler for discovering sources
-- [ ] Improve scraping reliability (handle dynamic pages)
+- [X] Improve verification reliability with Browser Rendering fallback
 - [ ] Explore Facebook data access options
 
 ---
 
 ### Infrastructure
-- [ ] Complete migration to Google Cloud
-- [ ] Fully deploy using freefoodmap.org
-- [ ] Optimize performance and cost
+- [ ] Create the production D1 database
+- [ ] Deploy the Worker and connect freefoodmap.org
+- [ ] Verify production data, then archive the legacy Flask deployment
+- [X] Optimize performance and cost with scoped queries, edge caching, lazy map assets, and clustering
 
 ---
 
@@ -245,11 +268,11 @@ Appear when users search:
 
 ### Admin Tools
 - [X] Add search to major admin tables
-- [ ] Add report categories (wrong hours, closed, etc.)
-- [ ] Add resolution notes for reports
+- [X] Add report categories (wrong hours, closed, etc.)
+- [X] Add resolution notes for reports
 - [ ] Add user status (active/pending/suspended)
 - [ ] Add organization merge feature
-- [ ] Add analytics dashboard (counts, activity)
+- [X] Add admin activity and verification metrics
 
 ---
 
@@ -273,7 +296,7 @@ Appear when users search:
 - [X] Add stronger validation (email, phone, ZIP, URL)
 - [X] Add duplicate warnings on submission
 - [X] Add source link for location submissions
-- [ ] Add “I verified this” checkbox
+- [X] Add “I verified this” checkbox
 
 ---
 
@@ -296,7 +319,7 @@ Appear when users search:
 
 ### SEO & Accessibility
 - [X] Structured metadata for search engines
-- [ ] Improve page speed
+- [X] Improve page speed with on-demand data and map loading
 - [X] Add basic accessibility improvements (labels, ARIA navigation, responsive layout)
 - [ ] Improve content for discoverability
 
@@ -334,7 +357,7 @@ We welcome contributors in:
 
 We have built:
 - a working system (backend + database + frontend)
-- a dataset of 500+ locations
+- a verified production dataset of 448 active Pennsylvania locations
 
 We are now focused on:
 - scaling data

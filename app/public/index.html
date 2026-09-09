@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<meta name="theme-color" content="#001e44" />
+		<meta name="description" content="Find free food pantries, community meals, and emergency food resources near you." />
+		<meta property="og:title" content="Free Food Map" />
+		<meta property="og:description" content="Find and help verify free food resources in your community." />
+		<title>Free Food Map</title>
+		<link rel="manifest" href="/manifest.webmanifest" />
+		<link rel="icon" href="/icon-192.png" />
+		<link rel="stylesheet" href="/app.css?v=9" />
+	</head>
+	<body>
+		<a class="skip-link" href="#search-form">Skip to search</a>
+		<header class="app-header">
+			<a class="brand" href="#home" aria-label="Free Food Map home">
+				<span class="brand-mark" aria-hidden="true">FF</span>
+				<span><strong>Free Food Map</strong><small>Community initiative</small></span>
+			</a>
+			<nav class="header-actions" aria-label="Primary navigation">
+				<button class="button button-quiet" id="map-button" type="button">
+					<i data-lucide="map" aria-hidden="true"></i><span>Map</span>
+				</button>
+				<button class="button button-quiet" id="suggest-button" type="button">
+					<i data-lucide="map-pin-plus" aria-hidden="true"></i><span>Suggest a place</span>
+				</button>
+				<button class="button button-quiet" id="admin-button" type="button">
+					<i data-lucide="clipboard-check" aria-hidden="true"></i><span>Review</span>
+				</button>
+			</nav>
+		</header>
+
+		<main id="intro-view" class="intro-view">
+			<section class="intro-hero" aria-labelledby="intro-title">
+				<div class="intro-hero-media" role="img" aria-label="A community volunteer handing fresh food to a neighbor"></div>
+				<div class="intro-hero-inner">
+					<p class="intro-kicker">Community-powered food access</p>
+					<h1 id="intro-title">Free Food Map</h1>
+					<p class="intro-lede">Find free meals, food pantries, and grocery support in one practical, community-maintained map.</p>
+					<button class="button intro-primary-action" id="open-map-button" type="button">
+						Open the map <i data-lucide="arrow-right" aria-hidden="true"></i>
+					</button>
+					<p class="intro-trust"><i data-lucide="shield-check" aria-hidden="true"></i> Community suggestions are reviewed before they are published.</p>
+				</div>
+			</section>
+
+			<section class="intro-summary" aria-label="Initiative summary">
+				<div class="intro-summary-inner">
+					<div class="intro-stat"><strong id="intro-location-count">250+</strong><span>listed food resources</span></div>
+					<div class="intro-stat"><strong>Free</strong><span>to search and use</span></div>
+					<div class="intro-stat"><strong>Community-led</strong><span>suggestions and corrections</span></div>
+				</div>
+			</section>
+
+			<section class="intro-process" aria-labelledby="process-title">
+				<div class="intro-process-heading">
+					<p class="eyebrow">How the initiative works</p>
+					<h2 id="process-title">Local knowledge becomes useful, verified information.</h2>
+					<p>Free Food Map brings scattered food-access information into one place and gives the community a simple way to keep it current.</p>
+				</div>
+				<div class="intro-steps">
+					<article class="intro-step"><span>01</span><i data-lucide="search" aria-hidden="true"></i><h3>Find support</h3><p>Search by ZIP code, service, organization, or address and compare resources on the map.</p></article>
+					<article class="intro-step"><span>02</span><i data-lucide="map-pin-plus" aria-hidden="true"></i><h3>Share knowledge</h3><p>Suggest a missing resource or report information that has changed.</p></article>
+					<article class="intro-step"><span>03</span><i data-lucide="clipboard-check" aria-hidden="true"></i><h3>Review and publish</h3><p>Submissions enter a review queue before approved updates appear publicly.</p></article>
+				</div>
+				<button class="button button-primary intro-bottom-action" id="open-map-bottom-button" type="button">Start searching <i data-lucide="arrow-right" aria-hidden="true"></i></button>
+			</section>
+		</main>
+
+		<main id="public-view" class="map-workspace" hidden data-mobile-view="list">
+			<nav class="mobile-view-switcher" aria-label="Map workspace view">
+				<button class="mobile-view-button active" type="button" data-mobile-view-target="list" aria-pressed="true">
+					<i data-lucide="list-filter" aria-hidden="true"></i><span>Search</span>
+				</button>
+				<button class="mobile-view-button" type="button" data-mobile-view-target="map" aria-pressed="false">
+					<i data-lucide="map" aria-hidden="true"></i><span>Map</span>
+				</button>
+			</nav>
+			<aside class="finder" aria-label="Find food locations">
+				<div class="finder-heading">
+					<p class="eyebrow">Free food near you</p>
+					<h1>Find a place to eat or pick up groceries</h1>
+					<p>Hours can change. Call the location before you visit.</p>
+				</div>
+
+				<form id="search-form" class="search-form" role="search">
+					<label class="search-box" for="search-query">
+						<i data-lucide="search" aria-hidden="true"></i>
+						<input id="search-query" name="q" type="search" placeholder="Name, address, or organization" autocomplete="off" enterkeyhint="search" />
+					</label>
+					<div class="filter-row">
+						<label>
+							<span>ZIP code</span>
+							<input id="search-zip" name="zip" inputmode="numeric" maxlength="5" pattern="[0-9]{5}" placeholder="19104" autocomplete="postal-code" enterkeyhint="search" aria-describedby="zip-help" />
+						</label>
+						<label>
+							<span>Service</span>
+							<select id="search-service" name="service"><option value="">Any service</option></select>
+						</label>
+					</div>
+					<small id="zip-help" class="field-help">Search loads only the area you request.</small>
+					<div class="search-options">
+						<label class="check-line"><input name="has_hours" type="checkbox" /> Has listed hours</label>
+						<label class="check-line"><input name="open_now" type="checkbox" /> Open now</label>
+					</div>
+					<div class="search-actions">
+						<button class="button button-secondary" id="show-all-locations" type="button"><i data-lucide="map-pinned" aria-hidden="true"></i>Show all</button>
+						<button class="button button-primary" type="submit">Search</button>
+					</div>
+				</form>
+
+				<div class="results-heading">
+					<strong id="result-count">Search by ZIP code</strong>
+					<button class="icon-button" id="clear-search" type="button" title="Clear filters" aria-label="Clear filters">
+						<i data-lucide="rotate-ccw" aria-hidden="true"></i>
+					</button>
+				</div>
+				<div id="results" class="results" aria-live="polite"><div class="empty-state"><strong>Find food near you</strong>Enter a ZIP code or use your location to begin.</div></div>
+			</aside>
+
+			<section class="map-stage" aria-label="Map of free food locations">
+				<div id="map"></div>
+				<div class="map-notice"><i data-lucide="phone" aria-hidden="true"></i> Call before visiting</div>
+				<button class="locate-button" id="locate-button" type="button" title="Use my location" aria-label="Use my location">
+					<i data-lucide="locate-fixed" aria-hidden="true"></i>
+				</button>
+			</section>
+		</main>
+
+		<main id="admin-view" class="admin-view" hidden>
+			<div class="admin-toolbar">
+				<div>
+					<p class="eyebrow">Admin workflow</p>
+					<h1>Review queue</h1>
+				</div>
+				<div class="toolbar-actions">
+					<button class="button button-secondary" id="refresh-admin" type="button"><i data-lucide="refresh-cw" aria-hidden="true"></i>Refresh</button>
+					<button class="button button-quiet" id="exit-admin" type="button"><i data-lucide="map" aria-hidden="true"></i>Back to map</button>
+				</div>
+			</div>
+
+			<section id="admin-metrics" class="metrics" aria-label="Queue summary"></section>
+			<div class="admin-tabs" role="tablist" aria-label="Admin views">
+				<button class="admin-tab active" type="button" data-admin-tab="suggestions" role="tab" aria-selected="true">Suggestions <span id="suggestion-count"></span></button>
+				<button class="admin-tab" type="button" data-admin-tab="reports" role="tab" aria-selected="false">Reports <span id="report-count"></span></button>
+				<button class="admin-tab" type="button" data-admin-tab="locations" role="tab" aria-selected="false">Locations</button>
+				<button class="admin-tab" type="button" data-admin-tab="verification-jobs" role="tab" aria-selected="false">Verification <span id="verification-count"></span></button>
+			</div>
+			<section id="admin-content" class="admin-content" aria-live="polite"></section>
+		</main>
+
+		<dialog id="suggest-dialog" class="modal modal-wide">
+			<form id="suggest-form" class="dialog-form">
+				<div class="dialog-header">
+					<div><p class="eyebrow">Community contribution</p><h2>Suggest a food resource</h2></div>
+					<button class="icon-button" type="button" data-close-dialog title="Close" aria-label="Close"><i data-lucide="x" aria-hidden="true"></i></button>
+				</div>
+				<p class="dialog-copy">Your suggestion stays private until an admin reviews it.</p>
+				<div class="form-grid two-column">
+					<label><span>Location name *</span><input name="name" required maxlength="140" /></label>
+					<label><span>Organization</span><input name="organization_name" maxlength="140" /></label>
+					<label class="full"><span>Full street address *</span><input name="address" required maxlength="240" autocomplete="street-address" /></label>
+					<label><span>ZIP code *</span><input name="zip_code" required inputmode="numeric" maxlength="5" pattern="[0-9]{5}" /></label>
+					<label><span>Service *</span><select name="service_type" required data-service-select><option value="">Choose a service</option></select></label>
+					<label class="full"><span>Hours</span><input name="hours" maxlength="500" placeholder="Mon-Fri, 9am-5pm" /></label>
+					<label><span>Phone</span><input name="contact_phone" type="tel" maxlength="40" /></label>
+					<label><span>Public email</span><input name="contact_email" type="email" maxlength="160" /></label>
+					<label class="full"><span>Website</span><input name="contact_web" type="url" maxlength="500" placeholder="https://" /></label>
+					<label class="full"><span>Notes</span><textarea name="notes" maxlength="1200" rows="3"></textarea></label>
+					<label class="full"><span>Eligibility</span><textarea name="eligibility" maxlength="700" rows="2"></textarea></label>
+					<label><span>Accessibility</span><input name="accessibility" maxlength="500" /></label>
+					<label><span>Languages</span><input name="languages" maxlength="300" /></label>
+					<label><span>Source link</span><input name="source_url" type="url" maxlength="500" placeholder="https://" /></label>
+					<label><span>Your email</span><input name="submitter_email" type="email" maxlength="160" /></label>
+					<label class="honeypot" aria-hidden="true">Company<input name="company" tabindex="-1" autocomplete="off" /></label>
+				</div>
+				<div class="dialog-checks"><label class="check-line"><input name="appointment_required" type="checkbox" /> Appointment required</label><label class="check-line"><input name="verified_recently" type="checkbox" /> I checked this information recently</label></div>
+				<input name="turnstile_token" type="hidden" /><div class="turnstile-slot" data-turnstile-form="suggest-form"></div>
+				<div class="form-status" aria-live="polite"></div>
+				<div class="dialog-actions"><button class="button button-secondary" type="button" data-close-dialog>Cancel</button><button class="button button-primary" type="submit">Send for review</button></div>
+			</form>
+		</dialog>
+
+		<dialog id="report-dialog" class="modal">
+			<form id="report-form" class="dialog-form">
+				<div class="dialog-header">
+					<div><p class="eyebrow">Help keep it accurate</p><h2>Report an issue</h2></div>
+					<button class="icon-button" type="button" data-close-dialog title="Close" aria-label="Close"><i data-lucide="x" aria-hidden="true"></i></button>
+				</div>
+				<p id="report-location-name" class="dialog-copy"></p>
+				<input name="location_id" type="hidden" />
+				<div class="form-grid">
+					<label><span>Issue type *</span><select name="category" required id="report-category"><option value="">Choose an issue</option></select></label>
+					<label><span>What needs to be fixed? *</span><textarea name="description" required maxlength="1200" rows="5"></textarea></label>
+					<label><span>Your email</span><input name="contact_email" type="email" maxlength="160" /></label>
+					<label class="honeypot" aria-hidden="true">Company<input name="company" tabindex="-1" autocomplete="off" /></label>
+				</div>
+				<input name="turnstile_token" type="hidden" /><div class="turnstile-slot" data-turnstile-form="report-form"></div>
+				<div class="form-status" aria-live="polite"></div>
+				<div class="dialog-actions"><button class="button button-secondary" type="button" data-close-dialog>Cancel</button><button class="button button-primary" type="submit">Submit report</button></div>
+			</form>
+		</dialog>
+
+		<dialog id="admin-dialog" class="modal modal-small">
+			<form id="admin-form" class="dialog-form">
+				<div class="dialog-header"><h2>Admin access</h2><button class="icon-button" type="button" data-close-dialog title="Close" aria-label="Close"><i data-lucide="x" aria-hidden="true"></i></button></div>
+				<label><span>Admin key</span><input name="token" type="password" required autocomplete="current-password" /></label>
+				<div class="form-status" aria-live="polite"></div>
+				<div class="dialog-actions"><button class="button button-secondary" type="button" data-close-dialog>Cancel</button><button class="button button-primary" type="submit">Open review queue</button></div>
+			</form>
+		</dialog>
+
+		<dialog id="review-dialog" class="modal modal-wide">
+			<form id="review-form" class="dialog-form">
+				<input name="id" type="hidden" />
+				<input name="mode" type="hidden" />
+				<div class="dialog-header"><div><p class="eyebrow" id="review-eyebrow">Pending suggestion</p><h2 id="review-title">Review and publish</h2></div><button class="icon-button" type="button" data-close-dialog title="Close" aria-label="Close"><i data-lucide="x" aria-hidden="true"></i></button></div>
+				<div class="duplicate-warning" id="duplicate-warning" hidden></div>
+				<div class="form-grid two-column">
+					<label><span>Location name *</span><input name="name" required maxlength="140" /></label>
+					<label><span>Organization</span><input name="organization_name" maxlength="140" /></label>
+					<label class="full"><span>Address *</span><input name="address" required maxlength="240" /></label>
+					<label><span>ZIP code *</span><input name="zip_code" required maxlength="5" pattern="[0-9]{5}" /></label>
+					<label><span>Service *</span><select name="service_type" required data-service-select></select></label>
+					<label class="full"><span>Hours</span><input name="hours" maxlength="500" /></label>
+					<label><span>Phone</span><input name="contact_phone" maxlength="40" /></label>
+					<label><span>Email</span><input name="contact_email" type="email" maxlength="160" /></label>
+					<label class="full"><span>Website</span><input name="contact_web" type="url" maxlength="500" /></label>
+					<label class="full"><span>Notes</span><textarea name="notes" maxlength="1200" rows="3"></textarea></label>
+					<label class="full"><span>Eligibility</span><textarea name="eligibility" maxlength="700" rows="2"></textarea></label>
+					<label><span>Accessibility</span><input name="accessibility" maxlength="500" /></label>
+					<label><span>Languages</span><input name="languages" maxlength="300" /></label>
+					<label><span>Schedule time zone</span><input name="schedule_timezone" maxlength="80" value="America/New_York" /></label>
+					<label><span>Source</span><input name="source_url" type="url" maxlength="500" /></label>
+					<label><span>Status</span><select name="status"><option value="active">Active</option><option value="inactive">Inactive</option></select></label>
+					<label><span>Latitude</span><input name="latitude" inputmode="decimal" /></label>
+					<label><span>Longitude</span><input name="longitude" inputmode="decimal" /></label>
+					<label class="full"><span>Review notes</span><textarea name="review_notes" maxlength="1200" rows="2"></textarea></label>
+				</div>
+				<div class="dialog-checks"><label class="check-line"><input name="appointment_required" type="checkbox" /> Appointment required</label><label class="check-line" id="verified-control"><input name="mark_verified" type="checkbox" /> Mark information verified today</label></div>
+				<div class="form-status" aria-live="polite"></div>
+				<div class="dialog-actions"><button class="button button-secondary" type="button" data-close-dialog>Cancel</button><button class="button button-primary" id="review-submit" type="submit">Approve and publish</button></div>
+			</form>
+		</dialog>
+
+		<dialog id="confirm-dialog" class="modal modal-small">
+			<form id="confirm-form" class="dialog-form">
+				<input name="location_id" type="hidden" />
+				<div class="dialog-header"><div><p class="eyebrow">Community update</p><h2>How was your visit?</h2></div><button class="icon-button" type="button" data-close-dialog title="Close" aria-label="Close"><i data-lucide="x" aria-hidden="true"></i></button></div>
+				<p id="confirm-location-name" class="dialog-copy"></p>
+				<label><span>Update *</span><select name="signal" required><option value="">Choose one</option><option value="open">Open</option><option value="hours_correct">Hours were correct</option><option value="food_available">Food was available</option><option value="temporary_closed">Temporarily closed</option><option value="long_wait">Long wait</option></select></label>
+				<label><span>Optional note</span><textarea name="note" maxlength="280" rows="3"></textarea></label>
+				<label class="honeypot" aria-hidden="true">Company<input name="company" tabindex="-1" autocomplete="off" /></label>
+				<input name="turnstile_token" type="hidden" /><div class="turnstile-slot" data-turnstile-form="confirm-form"></div>
+				<div class="form-status" aria-live="polite"></div>
+				<div class="dialog-actions"><button class="button button-secondary" type="button" data-close-dialog>Cancel</button><button class="button button-primary" type="submit">Share update</button></div>
+			</form>
+		</dialog>
+
+		<dialog id="resolve-dialog" class="modal">
+			<form id="resolve-form" class="dialog-form">
+				<input name="id" type="hidden" />
+				<div class="dialog-header"><h2>Resolve report</h2><button class="icon-button" type="button" data-close-dialog title="Close" aria-label="Close"><i data-lucide="x" aria-hidden="true"></i></button></div>
+				<p id="resolve-copy" class="dialog-copy"></p>
+				<label><span>Resolution notes</span><textarea name="resolution_notes" maxlength="1200" rows="4"></textarea></label>
+				<div class="form-status" aria-live="polite"></div>
+				<div class="dialog-actions"><button class="button button-secondary" type="button" data-close-dialog>Cancel</button><button class="button button-primary" type="submit">Mark resolved</button></div>
+			</form>
+		</dialog>
+
+		<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+		<script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.js" defer></script>
+		<script src="/app.js?v=10" defer></script>
+	</body>
+</html>

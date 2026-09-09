@@ -1,0 +1,7 @@
+ADMIN_TOKEN=replace-with-a-long-random-value
+SUBMISSION_SALT=replace-with-a-different-random-value
+# Optional production hardening
+# TURNSTILE_SITE_KEY=your-widget-site-key
+# TURNSTILE_SECRET=your-widget-secret
+# CF_ACCESS_TEAM_DOMAIN=your-team.cloudflareaccess.com
+# CF_ACCESS_AUD=your-access-application-audience

@@ -1,0 +1,35 @@
+{
+	"name": "free-food-map",
+	"version": "0.0.0",
+	"private": true,
+	"scripts": {
+		"deploy": "wrangler deploy",
+		"dev": "wrangler dev",
+		"start": "wrangler dev",
+		"seed:sql": "node scripts/seed-locations.mjs ../FFM_data.csv migrations/0002_seed_locations.sql",
+		"coordinates:audit": "node scripts/reconcile-coordinates.mjs",
+		"coordinates:fix": "node scripts/reconcile-coordinates.mjs --apply",
+		"verification:audit": "node scripts/verify-locations.mjs",
+		"verification:apply": "node scripts/verify-locations.mjs --apply",
+		"locations:discover": "node scripts/discover-pa211-locations.mjs",
+		"locations:add": "node scripts/discover-pa211-locations.mjs --apply",
+		"hours:normalize": "node scripts/normalize-hours.mjs",
+		"db:local": "wrangler d1 migrations apply free-food-map-db --local",
+		"check": "tsc --noEmit && vitest run",
+		"test": "vitest",
+		"cf-typegen": "wrangler types"
+	},
+	"devDependencies": {
+		"@cloudflare/puppeteer": "^1.4.0",
+		"@cloudflare/vitest-plugin": "^1.0.0",
+		"csv-parse": "^7.0.2",
+		"typescript": "^5.5.2",
+		"vitest": "~4.1.0",
+		"wrangler": "^4"
+	},
+	"dependencies": {
+		"jose": "^6.2.12",
+		"leaflet": "1.9.4",
+		"leaflet.markercluster": "1.5.3"
+	}
+}
