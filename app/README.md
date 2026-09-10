@@ -113,14 +113,11 @@ When the two Turnstile values are absent, community forms continue to use the ho
 
 ## Automatic deployments
 
-The GitHub Actions workflow runs tests, applies unapplied D1 migrations, updates the two Worker secrets, and deploys every change to main. Add these repository secrets once:
+The GitHub Actions workflow runs tests, applies unapplied D1 migrations, and deploys every change to main. Add this repository secret once:
 
-- CLOUDFLARE_ACCOUNT_ID
 - CLOUDFLARE_API_TOKEN
-- ADMIN_TOKEN
-- SUBMISSION_SALT
 
-The API token should be scoped to this Cloudflare account and limited to Workers and D1 edits.
+The account ID is a non-secret value stored in `wrangler.jsonc`. The API token should be scoped to this Cloudflare account and limited to Workers and D1 edits. `ADMIN_TOKEN` and `SUBMISSION_SALT` remain encrypted Worker secrets in Cloudflare and are not replaced during routine deployments.
 
 ## Data model
 

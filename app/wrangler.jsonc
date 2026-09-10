@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "free-food-map",
+  "account_id": "22240b4333a37692bcfbc78e59a4057e",
   "main": "src/index.ts",
   "compatibility_date": "2026-08-27",
   "compatibility_flags": ["global_fetch_strictly_public"],

@@ -36,9 +36,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
-      SUBMISSION_SALT: ${{ secrets.SUBMISSION_SALT }}
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v4
@@ -52,17 +49,13 @@ jobs:
       - run: pnpm install --frozen-lockfile
         working-directory: app
       - name: Report unconfigured deployment
-        if: ${{ env.CLOUDFLARE_API_TOKEN == '' || env.CLOUDFLARE_ACCOUNT_ID == '' || env.ADMIN_TOKEN == '' || env.SUBMISSION_SALT == '' }}
-        run: echo "::notice::Tests passed. Add the four documented repository secrets to enable automatic Cloudflare deployment."
+        if: ${{ env.CLOUDFLARE_API_TOKEN == '' }}
+        run: echo "::notice::Tests passed. Add the documented CLOUDFLARE_API_TOKEN repository secret to enable automatic deployment."
       - name: Apply database migrations and deploy
-        if: ${{ env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != '' && env.ADMIN_TOKEN != '' && env.SUBMISSION_SALT != '' }}
+        if: ${{ env.CLOUDFLARE_API_TOKEN != '' }}
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: app
           preCommands: wrangler d1 migrations apply free-food-map-db --remote
           command: deploy
-          secrets: |
-            ADMIN_TOKEN
-            SUBMISSION_SALT
