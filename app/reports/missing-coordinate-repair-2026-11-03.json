@@ -1,0 +1,327 @@
+[
+  {
+    "id": 33,
+    "name": "Aleppo-Richhill-Morris-Gray Township Pantry",
+    "address": "105 Firehall Lane, Graysville, PA",
+    "original_zip": "15337",
+    "zip": "15337",
+    "status": "needs_address_review"
+  },
+  {
+    "id": 82,
+    "name": "Basic Need Hub",
+    "address": "222 Boucke Building, University Park, PA",
+    "original_zip": "16801",
+    "zip": "16801",
+    "status": "needs_address_review"
+  },
+  {
+    "id": 202,
+    "name": "Bridge City Church",
+    "address": "1200 Wolfe Avenue",
+    "original_zip": "15104",
+    "zip": "15104",
+    "latitude": 40.406241,
+    "longitude": -79.845749,
+    "evidence": "1200 Wolfe Avenue, Braddock, PA 15104",
+    "source": "Pennsylvania 211 exact street and ZIP, plausible ZIP proximity https://search.pa211.org/search/d9bb4d39-1d74-59d7-a7c4-550b3da8f2dc"
+  },
+  {
+    "id": 206,
+    "name": "Catholic Community of Bloomfield Food Pantry",
+    "address": "4921 Mead Way",
+    "original_zip": "15224",
+    "zip": "15224",
+    "latitude": 40.461822,
+    "longitude": -79.945134,
+    "evidence": "4921 Mead Way, Pittsburgh, PA 15224",
+    "source": "Pennsylvania 211 exact street and ZIP, plausible ZIP proximity https://search.pa211.org/search/19070f4c-cf4d-58b4-9f84-b9104fa687a9"
+  },
+  {
+    "id": 246,
+    "name": "Center for Family Services",
+    "address": "14182 1st Street",
+    "original_zip": "16422",
+    "zip": "16422",
+    "latitude": 41.661288,
+    "longitude": -80.315177,
+    "evidence": "14182 1st Street, Harmonsburg, PA 16422",
+    "source": "Pennsylvania 211 exact street and ZIP, plausible ZIP proximity https://search.pa211.org/search/fb0e8eeb-e9f4-5064-9845-e88265b4d631"
+  },
+  {
+    "id": 39,
+    "name": "Center Township Pantry",
+    "address": "3374 West Roy Furman Highway, Rogersville, PA",
+    "original_zip": "15359",
+    "zip": "15359",
+    "status": "needs_address_review"
+  },
+  {
+    "id": 294,
+    "name": "Clintonville Food Pantry",
+    "address": "135 Irwin Street",
+    "original_zip": "16372",
+    "zip": "16372",
+    "latitude": 41.199859,
+    "longitude": -79.872053,
+    "evidence": "135 Irwin Street, Clintonville, PA 16372",
+    "source": "Pennsylvania 211 exact street and ZIP, plausible ZIP proximity https://search.pa211.org/search/8addd617-870c-5efd-a66e-72b3ce2351bf"
+  },
+  {
+    "id": 42,
+    "name": "Corner Cupboard Food Bank Inc",
+    "address": "881 Rolling Meadows Road, Waynesburg, PA",
+    "original_zip": "15370",
+    "zip": "15370",
+    "status": "needs_address_review"
+  },
+  {
+    "id": 282,
+    "name": "Coudersport Alliance Church",
+    "address": "1 Avenue A",
+    "original_zip": "16915",
+    "zip": "16915",
+    "latitude": 41.790553,
+    "longitude": -78.013338,
+    "evidence": "1 Avenue A, Coudersport, PA 16915",
+    "source": "Pennsylvania 211 exact street and ZIP, plausible ZIP proximity https://search.pa211.org/search/802c7c53-a9d6-5fa3-8418-ceb13401ecd9"
+  },
+  {
+    "id": 40,
+    "name": "Dunkard Township Pantry",
+    "address": "777 Larimer Avenue, Bobtown, PA",
+    "original_zip": "15315",
+    "zip": "15315",
+    "latitude": 39.761807,
+    "longitude": -79.981615,
+    "evidence": "777 Larimer Avenue, Bobtown, PA 15315",
+    "source": "Pennsylvania 211 exact street and ZIP, plausible ZIP proximity https://search.pa211.org/search/ceeb3afc-4e45-56fe-af61-13f754bdb264"
+  },
+  {
+    "id": 79,
+    "name": "Edinboro Food Bank",
+    "address": "200 Cooper Circle, Edinboro, PA",
+    "original_zip": "16412",
+    "zip": "16412",
+    "status": "needs_address_review"
+  },
+  {
+    "id": 192,
+    "name": "Faith Baptist Church",
+    "address": "1515 Wistar Road",
+    "original_zip": "19030",
+    "zip": "19030",
+    "latitude": 40.166101,
+    "longitude": -74.868488,
+    "evidence": "1515 Wistar Road, Fairless Hills, PA 19030",
+    "source": "Pennsylvania 211 exact street and ZIP, plausible ZIP proximity https://search.pa211.org/search/52d0b084-cfd2-54ca-aca1-72cf1fe8a9ac"
+  },
+  {
+    "id": 110,
+    "name": "First Presbyterian Church of Clarion",
+    "address": "700 Wood Street",
+    "original_zip": "16214",
+    "zip": "16214",
+    "latitude": 41.212244,
+    "longitude": -79.382927,
+    "evidence": "700 Wood Street, Clarion, PA 16214",
+    "source": "Pennsylvania 211 exact street and ZIP, plausible ZIP proximity https://search.pa211.org/search/156f289d-812e-51eb-97d7-516ab1df6223"
+  },
+  {
+    "id": 21,
+    "name": "Helping Harvest",
+    "address": "117 Morgan Drive, Reading, PA",
+    "original_zip": "19608",
+    "zip": "19608",
+    "latitude": 40.311808,
+    "longitude": -75.993838,
+    "evidence": "117 Morgan Drive, Reading, PA 19608",
+    "source": "Pennsylvania 211 exact street and ZIP, plausible ZIP proximity https://search.pa211.org/search/429d35df-d6ea-5bbd-ac0c-03a98f0ca9b7"
+  },
+  {
+    "id": 107,
+    "name": "Helping Harvest Food Bank",
+    "address": "117 Morgan Drive",
+    "original_zip": "19608",
+    "zip": "19608",
+    "latitude": 40.311808,
+    "longitude": -75.993838,
+    "evidence": "117 Morgan Drive, Reading, PA 19608",
+    "source": "Pennsylvania 211 exact street and ZIP, plausible ZIP proximity https://search.pa211.org/search/429d35df-d6ea-5bbd-ac0c-03a98f0ca9b7"
+  },
+  {
+    "id": 2,
+    "name": "KleinLife",
+    "address": "10100 Jamison Avenue, Philadelphia, PA",
+    "original_zip": "19116",
+    "zip": "19116",
+    "latitude": 40.101781,
+    "longitude": -75.020941,
+    "evidence": "10100 Jamison Avenue, Philadelphia, PA 19116",
+    "source": "Pennsylvania 211 exact street and ZIP, plausible ZIP proximity https://search.pa211.org/search/46cd13da-902a-580d-aeb0-283abf42dc4f"
+  },
+  {
+    "id": 228,
+    "name": "Mitzvah Food Program Northeast",
+    "address": "10100 Jamison Avenue",
+    "original_zip": "19116",
+    "zip": "19116",
+    "latitude": 40.101781,
+    "longitude": -75.020941,
+    "evidence": "10100 Jamison Avenue, Philadelphia, PA 19116",
+    "source": "Pennsylvania 211 exact street and ZIP, plausible ZIP proximity https://search.pa211.org/search/46cd13da-902a-580d-aeb0-283abf42dc4f"
+  },
+  {
+    "id": 211,
+    "name": "Mitzvah Food Project",
+    "address": "10100 Jamison Avenue",
+    "original_zip": "19116",
+    "zip": "19116",
+    "latitude": 40.101781,
+    "longitude": -75.020941,
+    "evidence": "10100 Jamison Avenue, Philadelphia, PA 19116",
+    "source": "Pennsylvania 211 exact street and ZIP, plausible ZIP proximity https://search.pa211.org/search/46cd13da-902a-580d-aeb0-283abf42dc4f"
+  },
+  {
+    "id": 51,
+    "name": "Moshannon Valley YMCA",
+    "address": "113 North 14th Street, Philipsburg, PA",
+    "original_zip": "16866",
+    "zip": "16866",
+    "status": "needs_address_review"
+  },
+  {
+    "id": 218,
+    "name": "North Way Christian Community",
+    "address": "12121 Perry Highway",
+    "original_zip": "15090",
+    "zip": "15090",
+    "latitude": 40.634273368217,
+    "longitude": -80.060507740987,
+    "evidence": "12121 PERRY HWY, WEXFORD, PA, 15090",
+    "source": "U.S. Census exact street and confirmed city"
+  },
+  {
+    "id": 94,
+    "name": "PSU Fayette Food Pantry",
+    "address": "2201 University Drive, Lemont Furnace, PA",
+    "original_zip": "15456",
+    "zip": "15456",
+    "status": "needs_address_review"
+  },
+  {
+    "id": 197,
+    "name": "Saint Elizabeth Center",
+    "address": "311 Emerald Street",
+    "original_zip": "16301",
+    "zip": "16301",
+    "latitude": 41.44229,
+    "longitude": -79.702483,
+    "evidence": "311 Emerald Street, Oil City, PA 16301",
+    "source": "Pennsylvania 211 exact street and ZIP, plausible ZIP proximity https://search.pa211.org/search/9f0a3c4b-9f57-5a5b-b8c6-e3e18f07abb4"
+  },
+  {
+    "id": 290,
+    "name": "Salvation Army",
+    "address": "1100 Clay Avenue Extension",
+    "original_zip": "15644",
+    "zip": "15644",
+    "latitude": 40.330889,
+    "longitude": -79.62514,
+    "evidence": "1100 Clay Avenue Extension, Jeanette, PA 15644",
+    "source": "Pennsylvania 211 exact street and ZIP, plausible ZIP proximity https://search.pa211.org/search/29376b6b-a8b2-59bc-92af-f3e6cb024636"
+  },
+  {
+    "id": 253,
+    "name": "Shamokin Water and Spirt Church",
+    "address": "915 High Road",
+    "original_zip": "17921",
+    "zip": "17921",
+    "latitude": 40.7499,
+    "longitude": -76.449524,
+    "evidence": "915 High Road, Ashland, PA 17921",
+    "source": "Pennsylvania 211 exact street and ZIP, plausible ZIP proximity https://search.pa211.org/search/b78b6d19-1bf0-5c73-ba3d-e7bdf9c2bacc"
+  },
+  {
+    "id": 252,
+    "name": "Shepherd's Shelf",
+    "address": "2211 Mainland Road",
+    "original_zip": "19438",
+    "zip": "19438",
+    "latitude": 40.256755,
+    "longitude": -75.36038,
+    "evidence": "2211 Mainland Road, Harleysville, PA 19438",
+    "source": "Pennsylvania 211 exact street and ZIP, plausible ZIP proximity https://search.pa211.org/search/28979baf-8fc2-5122-a1ed-5cfe02759536"
+  },
+  {
+    "id": 187,
+    "name": "Sidney and Pauline Friedman Jewish Community Center",
+    "address": "613 S.J. Strauss Lane",
+    "original_zip": "18704",
+    "zip": "18704",
+    "latitude": 41.297775,
+    "longitude": -75.874608,
+    "evidence": "613 S.J. Strauss Lane, Kingston, PA 18704",
+    "source": "Pennsylvania 211 exact street and ZIP, plausible ZIP proximity https://search.pa211.org/search/8a4ec5c2-328c-5bf1-9665-3865083f9092"
+  },
+  {
+    "id": 264,
+    "name": "Society of Saint Vincent de Paul Council of Altoon",
+    "address": "1523 Adams Avenue",
+    "original_zip": "16601",
+    "zip": "16601",
+    "latitude": 40.502937,
+    "longitude": -78.388484,
+    "evidence": "1523 Adams Avenue, Altoona, PA 16601",
+    "source": "Pennsylvania 211 exact street and ZIP, plausible ZIP proximity https://search.pa211.org/search/0eeeb456-9db6-50b7-b907-f917bc727f6b"
+  },
+  {
+    "id": 38,
+    "name": "Springhill-Freeport Pantry",
+    "address": "268 Windy Gap Road, New Freeport, PA",
+    "original_zip": "15352",
+    "zip": "15352",
+    "status": "needs_address_review"
+  },
+  {
+    "id": 9,
+    "name": "T.A.C.O. Emergency Food Pantry",
+    "address": "1876 Golden Mile Road, Wysox, PA",
+    "original_zip": "18854",
+    "zip": "18854",
+    "latitude": 41.77452,
+    "longitude": -76.39938,
+    "evidence": "1876 Goldenmile Road, Wysox, PA 18854",
+    "source": "Pennsylvania 211 exact street and ZIP, plausible ZIP proximity https://search.pa211.org/search/1a1c0a2b-f5e1-5654-bb54-530fc9058693"
+  },
+  {
+    "id": 35,
+    "name": "Wayne Township Pantry",
+    "address": "132 Spraggs Road, Spraggs, PA",
+    "original_zip": "15362",
+    "zip": "15362",
+    "status": "needs_address_review"
+  },
+  {
+    "id": 275,
+    "name": "York County Food Bank",
+    "address": "254 West Princess Street",
+    "original_zip": "17404",
+    "zip": "17404",
+    "latitude": 39.957559,
+    "longitude": -76.732899,
+    "evidence": "254 West Princess Street, York, PA 17404",
+    "source": "Pennsylvania 211 exact street and ZIP, plausible ZIP proximity https://search.pa211.org/search/454cb06e-68a6-5f4e-8ac9-67b86f61636e"
+  },
+  {
+    "id": 100,
+    "name": "Zion Church",
+    "address": "114 Zion Road",
+    "original_zip": "16214",
+    "zip": "16214",
+    "latitude": 41.149169,
+    "longitude": -79.402269,
+    "evidence": "114 Zion Road, Clarion, PA 16214",
+    "source": "Pennsylvania 211 exact street and ZIP, plausible ZIP proximity https://search.pa211.org/search/ca1610fa-3989-5489-a950-6c9878cf1c50"
+  }
+]

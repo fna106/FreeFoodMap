@@ -1,0 +1,63 @@
+{
+  "advisories": {
+    "1139346": {
+      "findings": [
+        {
+          "version": "2.0.1",
+          "paths": [
+            ".>@cloudflare/puppeteer>@puppeteer/browsers>extract-zip"
+          ],
+          "dev": true,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "id": 1139346,
+      "title": "extract-zip unvalidated symlink path traversal",
+      "module_name": "extract-zip",
+      "vulnerable_versions": "<=2.0.1",
+      "patched_versions": null,
+      "severity": "high",
+      "cwe": "CWE-22",
+      "github_advisory_id": "GHSA-jmr9-qjv8-65gv",
+      "url": "https://github.com/advisories/GHSA-jmr9-qjv8-65gv",
+      "patched_versions_unpublished": true
+    },
+    "1193685": {
+      "findings": [
+        {
+          "version": "2.0.1",
+          "paths": [
+            ".>@cloudflare/puppeteer>@puppeteer/browsers>extract-zip"
+          ],
+          "dev": true,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "id": 1193685,
+      "title": "extract-zip allows arbitrary file writes through symlink archive entries",
+      "module_name": "extract-zip",
+      "vulnerable_versions": "<=2.0.1",
+      "patched_versions": null,
+      "severity": "high",
+      "cwe": "CWE-22",
+      "github_advisory_id": "GHSA-7pqw-9j4j-h8q3",
+      "url": "https://github.com/advisories/GHSA-7pqw-9j4j-h8q3",
+      "patched_versions_unpublished": true
+    }
+  },
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 2,
+      "critical": 0
+    },
+    "dependencies": 3,
+    "devDependencies": 239,
+    "optionalDependencies": 89,
+    "totalDependencies": 242
+  }
+}

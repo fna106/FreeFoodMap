@@ -5,3 +5,7 @@
 allowBuilds:
   esbuild: true
   workerd: true
+overrides:
+  vite: ^8.2.4
+  source-map-js: ^1.2.2
+  basic-ftp: ^6.2.1

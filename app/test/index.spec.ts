@@ -21,6 +21,8 @@ describe('Free Food Map validation', () => {
 		expect(matchedAddressHasZip('1520 11TH ST, ALTOONA, PA, 16601', '16601')).toBe(true);
 		expect(matchedAddressHasZip('1520 11TH ST, ALTOONA, PA, 16601', '16625')).toBe(false);
 		expect(matchedAddressHasZip('1520 11TH ST, ALTOONA, PA', '16601')).toBe(false);
+		expect(matchedAddressHasZip('10100 JAMISON AVE, PHILADELPHIA, PA, 19116', '19116')).toBe(true);
+		expect(matchedAddressHasZip('10100 JAMISON AVE, PHILADELPHIA, PA', '10100')).toBe(false);
 	});
 });
 
@@ -54,8 +56,8 @@ describe('Free Food Map API', () => {
 		expect(html).toContain('id="public-view" class="map-workspace" hidden');
 		expect(html).toContain('data-mobile-view-target="list"');
 		expect(html).toContain('data-mobile-view-target="map"');
-		expect(html).toContain('/app.css?v=9');
-		expect(html).toContain('/app.js?v=10');
+		expect(html).toContain('/app.css?v=12');
+		expect(html).toContain('/app.js?v=14');
 		expect(html).toContain('id="show-all-locations"');
 		expect(html).toContain('Search by ZIP code');
 		expect(html).not.toContain('<script src="/leaflet.js"');

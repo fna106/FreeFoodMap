@@ -1,5 +1,5 @@
-const CACHE_NAME = 'free-food-map-v10';
-const APP_SHELL = ['/', '/index.html', '/app.css?v=9', '/app.js?v=10', '/manifest.webmanifest', '/community-food-hero.webp', '/icon-192.png', '/icon-512.png'];
+const CACHE_NAME = 'free-food-map-v14';
+const APP_SHELL = ['/', '/index.html', '/app.css?v=12', '/app.js?v=14', '/api/meta', '/manifest.webmanifest', '/community-food-hero.webp', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', function (event) {
 	event.waitUntil(

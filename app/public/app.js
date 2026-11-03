@@ -5,12 +5,19 @@
 		locations: [],
 		hasSearched: false,
 		lastLocationQuery: '',
+		searchOrigin: null,
+		searchRequestId: 0,
+		searchMeta: {},
 		serviceTypes: [],
 		reportCategories: [],
 		turnstileSiteKey: '',
 		markers: new Map(),
 		adminToken: sessionStorage.getItem('ffm-admin-token') || '',
 		adminTab: 'suggestions',
+		verificationCategory: 'attention',
+		verificationPage: 1,
+		verificationCounts: [],
+		verificationTotal: 0,
 		admin: { overview: {}, suggestions: [], reports: [], locations: [], verificationJobs: [] },
 	};
 
@@ -64,7 +71,7 @@
 		if (location.latitude == null || location.longitude == null || location.latitude === '' || location.longitude === '') return false;
 		var latitude = Number(location.latitude);
 		var longitude = Number(location.longitude);
-		return Number.isFinite(latitude) && Number.isFinite(longitude) && latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180;
+		return Number.isFinite(latitude) && Number.isFinite(longitude) && latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180 && !(latitude === 0 && longitude === 0);
 	}
 
 	function formStatus(form, message, type) {
@@ -201,7 +208,7 @@
 			var script = document.createElement('script');
 			script.src = src;
 			script.addEventListener('load', function () { script.dataset.loaded = 'true'; resolve(); }, { once: true });
-			script.addEventListener('error', reject, { once: true });
+			script.addEventListener('error', function (error) { script.remove(); reject(error); }, { once: true });
 			document.head.appendChild(script);
 		});
 	}
@@ -211,7 +218,7 @@
 			loadStylesheet('/leaflet.css');
 			loadStylesheet('/MarkerCluster.css');
 			loadStylesheet('/MarkerCluster.Default.css');
-			mapAssetsPromise = loadScript('/leaflet.js').then(function () { return loadScript('/leaflet.markercluster.js'); });
+			mapAssetsPromise = loadScript('/leaflet.js').then(function () { return loadScript('/leaflet.markercluster.js'); }).catch(function (error) { mapAssetsPromise = null; throw error; });
 		}
 		return mapAssetsPromise;
 	}
@@ -229,7 +236,7 @@
 			maxZoom: 19,
 			attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
 		}).addTo(map);
-		markerLayer = window.L.markerClusterGroup ? window.L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 48 }) : window.L.layerGroup();
+		markerLayer = window.L.markerClusterGroup ? window.L.markerClusterGroup({ animate: false, showCoverageOnHover: false, maxClusterRadius: 48 }) : window.L.layerGroup();
 		markerLayer.addTo(map);
 	}
 
@@ -254,15 +261,14 @@
 			if (!hasCoordinates(location)) return;
 			var latitude = Number(location.latitude);
 			var longitude = Number(location.longitude);
-			var marker = window.L.circleMarker([latitude, longitude], {
-				radius: 8,
-				weight: 2,
-				color: '#ffffff',
-				fillColor: markerColor(location.service_type),
-				fillOpacity: 0.95,
+			var marker = window.L.marker([latitude, longitude], {
+				title: location.name,
+				alt: location.name,
+				icon: window.L.divIcon({ className: 'food-map-marker', html: '<span style="background:' + markerColor(location.service_type) + '"></span>', iconSize: [18,18], iconAnchor: [9,9], popupAnchor: [0,-10] }),
 			})
 				.bindPopup(popupHtml(location))
 				.on('click', function () {
+					setMobileView('list');
 					selectResult(location.id, false);
 				})
 				.addTo(markerLayer);
@@ -271,7 +277,7 @@
 		});
 		if (bounds.length === 0) map.setView([40.86, -77.67], 7);
 		else if (bounds.length === 1) map.setView(bounds[0], 14);
-		else if (bounds.length > 1) map.fitBounds(bounds, { padding: [40, 40], maxZoom: 13 });
+		else if (bounds.length > 1) map.fitBounds(bounds, { animate: false, padding: [40, 40], maxZoom: 13 });
 	}
 
 	function detailsRow(label, value, link) {
@@ -352,11 +358,18 @@
 	}
 
 	function renderLocations() {
+		var meta = state.searchMeta || {};
+		var summary = document.getElementById('search-summary');
+		summary.textContent = meta.zip_center_unavailable
+			? 'Could not locate ZIP ' + meta.origin_zip + '. Showing exact ZIP matches only; the distance filter is unavailable. Try again or use your location.'
+			: meta.radius_miles ? 'Within ' + meta.radius_miles + (meta.radius_miles === 1 ? ' mile of ' : ' miles of ') + (meta.approximate_origin ? 'the approximate center of ZIP ' + meta.origin_zip : 'your location') + '. Distances are straight-line estimates.' : '';
+		summary.hidden = !summary.textContent;
+		if (meta.unmapped_count) { summary.textContent += ' ' + meta.unmapped_count + ' listed resources have an unconfirmed map position' + (meta.origin_zip ? ' in this ZIP; their distance is unknown.' : ' and appear in the list only.'); summary.hidden = false; }
 		elements.resultCount.textContent =
 			state.locations.length === 1 ? '1 location' : state.locations.length + ' locations';
 		if (!state.locations.length) {
 			elements.results.innerHTML =
-				'<div class="empty-state"><strong>No matches found</strong>Try removing a filter or suggest a missing location.</div>';
+				'<div class="empty-state"><strong>No matches found</strong>' + (meta.radius_miles ? 'Try increasing the distance or removing a filter.' : 'Try removing a filter or suggest a missing location.') + '</div>';
 		} else {
 			elements.results.innerHTML = state.locations.map(locationCard).join('');
 		}
@@ -365,6 +378,10 @@
 	}
 
 	function resetLocationsPrompt() {
+		state.searchRequestId += 1;
+		state.searchOrigin = null;
+		state.searchMeta = {};
+		document.getElementById('search-summary').hidden = true;
 		state.locations = [];
 		state.hasSearched = false;
 		state.lastLocationQuery = '';
@@ -388,6 +405,13 @@
 		}
 		var marker = state.markers.get(Number(id));
 		if (marker && map) {
+			if (openMarker && markerLayer.zoomToShowLayer) {
+				map.setView(marker.getLatLng(), Math.max(map.getZoom(), 16), { animate: false });
+				var parent = markerLayer.getVisibleParent(marker);
+				if (parent && parent !== marker && parent.spiderfy) parent.spiderfy();
+				marker.openPopup();
+				return;
+			}
 			if (openMarker) marker.openPopup();
 			if (openMarker && window.matchMedia('(max-width: 640px)').matches) {
 				map.setView(marker.getLatLng(), Math.max(map.getZoom(), 13), { animate: true });
@@ -399,9 +423,14 @@
 
 	async function loadLocations(options) {
 		options = options || {};
+		var requestId = ++state.searchRequestId;
 		elements.resultCount.textContent = 'Loading locations...';
 		var params = new URLSearchParams();
 		var formData = formObject(elements.searchForm);
+		if (options.all) state.searchOrigin = { all: true };
+		else if (options.latitude != null && options.longitude != null) state.searchOrigin = { latitude: options.latitude, longitude: options.longitude };
+		else if (formData.zip) state.searchOrigin = null;
+		if (!formData.zip && !options.all && options.latitude == null && state.searchOrigin) options = state.searchOrigin;
 		if (!options.all && options.latitude == null && !/^\d{5}$/.test(formData.zip || '')) {
 			elements.resultCount.textContent = 'ZIP code required';
 			elements.results.innerHTML = '<div class="empty-state"><strong>Enter a five-digit ZIP code</strong>Or use your location to search nearby.</div>';
@@ -413,20 +442,23 @@
 		if (formData.service) params.set('service', formData.service);
 		if (formData.has_hours) params.set('has_hours', 'true');
 		if (formData.open_now) params.set('open_now', 'true');
+		if (!options.all) params.set('radius', formData.radius || '5');
 		if (options.all) params.set('all', 'true');
 		if (options.latitude != null && options.longitude != null) {
 			params.delete('zip');
 			params.set('lat', Number(options.latitude).toFixed(3));
 			params.set('lon', Number(options.longitude).toFixed(3));
-			params.set('radius', '10');
 		}
 		try {
 			state.lastLocationQuery = params.toString();
 			var data = await api('/api/locations?' + state.lastLocationQuery);
+			if (requestId !== state.searchRequestId) return;
 			state.locations = data.locations || [];
+			state.searchMeta = data.meta || {};
 			state.hasSearched = true;
 			renderLocations();
 		} catch (error) {
+			if (requestId !== state.searchRequestId) return;
 			elements.resultCount.textContent = 'Locations unavailable';
 			elements.results.innerHTML =
 				'<div class="empty-state"><strong>Could not load the map data</strong>' +
@@ -437,9 +469,12 @@
 
 	async function reloadLocations() {
 		if (!state.lastLocationQuery) return;
+		var requestId = ++state.searchRequestId;
 		try {
 			var data = await api('/api/locations?' + state.lastLocationQuery);
+			if (requestId !== state.searchRequestId) return;
 			state.locations = data.locations || [];
+			state.searchMeta = data.meta || {};
 			renderLocations();
 		} catch (_error) {}
 	}
@@ -517,7 +552,14 @@
 			slot.dataset.sitekey = siteKey;
 			slot.dataset.theme = 'light';
 		});
-		loadScript('https://challenges.cloudflare.com/turnstile/v0/api.js');
+		loadScript('https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit').then(function () {
+			window.turnstile.ready(function () {
+				document.querySelectorAll('[data-turnstile-form]').forEach(function (slot) {
+					var form = document.getElementById(slot.dataset.turnstileForm);
+					form.dataset.turnstileWidget = window.turnstile.render(slot, { sitekey: siteKey, callback: function (token) { form.elements.turnstile_token.value = token; } });
+				});
+			});
+		}).catch(function () { showToast('Human verification could not load. Please reload to try again.'); });
 	}
 
 	async function loadMeta() {
@@ -553,7 +595,8 @@
 			? state.admin.suggestions.length
 			: '';
 		document.getElementById('report-count').textContent = state.admin.reports.length ? state.admin.reports.length : '';
-		document.getElementById('verification-count').textContent = state.admin.verificationJobs.length ? state.admin.verificationJobs.length : '';
+		var attentionCount = state.verificationCounts.filter(function (c) { return c.reason !== 'confirmed' && c.reason !== 'running' && c.reason !== 'mapping'; }).reduce(function (sum,c) { return sum+c.total; },0);
+		document.getElementById('verification-count').textContent = attentionCount || '';
 	}
 
 	function queueEmpty(title, copy) {
@@ -662,15 +705,22 @@
 	}
 
 	function renderVerificationJobs() {
-		if (!state.admin.verificationJobs.length) return queueEmpty('Verification queue is clear', 'Automated source checks will appear here when they need attention.');
-		return '<div class="queue-list">' + state.admin.verificationJobs.map(function (job) {
+		var counts = {};
+		state.verificationCounts.forEach(function (c) { counts[c.reason] = c.total; });
+		counts.attention = ['identity','hours','contact','other','failed'].reduce(function (sum,k) { return sum + (counts[k] || 0); },0);
+		var tabs = '<div class="verification-tabs" role="tablist" aria-label="Verification reasons">' + [['attention','Needs attention'],['identity','Name / address'],['hours','Hours'],['contact','Contact'],['other','Other changes'],['failed','Source unavailable'],['mapping','Map positions'],['running','In progress'],['confirmed','Completed']].map(function (entry) {
+			return '<button type="button" role="tab" class="button button-secondary button-small" aria-selected="' + (state.verificationCategory === entry[0]) + '" data-verification-category="' + entry[0] + '">' + entry[1] + ' (' + (counts[entry[0]] || 0) + ')</button>';
+		}).join('') + '</div><p>One latest check per location. Earlier checks remain in the audit history. A location with multiple issues appears under its first unresolved reason.</p>';
+		var navigation = '<div class="toolbar-actions"><button class="button button-secondary" data-verification-page="' + (state.verificationPage-1) + '" ' + (state.verificationPage <= 1 ? 'disabled' : '') + '>Previous</button><span>Page ' + state.verificationPage + ' Â· ' + state.verificationTotal + ' locations</span><button class="button button-secondary" data-verification-page="' + (state.verificationPage+1) + '" ' + (state.verificationPage*50 >= state.verificationTotal ? 'disabled' : '') + '>Next</button></div>';
+		if (!state.admin.verificationJobs.length) return tabs + queueEmpty('Nothing to review here', 'Choose another reason to view its locations.') + navigation;
+		return tabs + '<div class="queue-list">' + state.admin.verificationJobs.map(function (job) {
 			var detail = '';
 			try {
 				var evidence = JSON.parse(job.evidence_json || '{}');
 				detail = (evidence.checks || []).map(function (check) { return check.field + ': ' + (check.confirmed ? 'matched' : 'not found'); }).join(', ');
 			} catch (_error) {}
 			return '<article class="queue-item"><div class="queue-main"><div class="queue-title-row"><h2>' + escapeHtml(job.location_name) + '</h2><span class="status-tag ' + escapeHtml(job.status) + '">' + escapeHtml(job.status) + '</span></div><div class="queue-meta"><span>' + escapeHtml(job.location_address) + '</span><span>Checked ' + escapeHtml(formatDate(job.completed_at || job.started_at || job.scheduled_for)) + '</span></div><div class="queue-detail"><span>' + escapeHtml(detail || job.error_message || 'Waiting for source check') + '</span>' + (job.source_url ? '<a href="' + escapeHtml(safeWebUrl(job.source_url)) + '" target="_blank" rel="noopener">View source</a>' : '') + '</div></div><div class="item-actions"><button class="button button-secondary button-small" type="button" data-edit-location="' + Number(job.location_id) + '"><i data-lucide="pencil" aria-hidden="true"></i>Review record</button></div></article>';
-		}).join('') + '</div>';
+		}).join('') + '</div>' + navigation;
 	}
 
 	function renderAdminContent() {
@@ -689,13 +739,15 @@
 				api('/api/admin/suggestions', {}, true),
 				api('/api/admin/reports', {}, true),
 				api('/api/admin/locations', {}, true),
-				api('/api/admin/verification-jobs', {}, true),
+				api('/api/admin/verification-jobs?category=' + state.verificationCategory + '&page=' + state.verificationPage, {}, true),
 			]);
 			state.admin.overview = values[0].counts || {};
 			state.admin.suggestions = values[1].suggestions || [];
 			state.admin.reports = values[2].reports || [];
 			state.admin.locations = values[3].locations || [];
 			state.admin.verificationJobs = values[4].verification_jobs || [];
+			state.verificationCounts = values[4].counts || [];
+			state.verificationTotal = values[4].total || 0;
 			renderAdminMetrics();
 			renderAdminContent();
 		} catch (error) {
@@ -728,14 +780,16 @@
 			button.setAttribute('aria-pressed', String(active));
 		});
 		if (nextView === 'map') {
-			window.setTimeout(async function () {
+			return new Promise(function (resolve) { window.setTimeout(async function () {
 				if (!map) await initializeMap();
 				if (map) {
 					map.invalidateSize();
 					renderMap(state.locations);
 				}
-			}, 10);
+				resolve();
+			}, 10); });
 		}
+		return Promise.resolve();
 	}
 
 	async function showMapView(updateHash) {
@@ -794,7 +848,7 @@
 		elements.reviewDialog.showModal();
 	}
 
-	document.addEventListener('click', function (event) {
+	document.addEventListener('click', async function (event) {
 		var close = event.target.closest('[data-close-dialog]');
 		if (close) {
 			var dialog = close.closest('dialog');
@@ -803,10 +857,8 @@
 		}
 		var viewOnMapButton = event.target.closest('[data-view-on-map]');
 		if (viewOnMapButton) {
-			setMobileView('map');
-			window.setTimeout(function () {
-				selectResult(viewOnMapButton.dataset.viewOnMap, true);
-			}, 30);
+			await setMobileView('map');
+			selectResult(viewOnMapButton.dataset.viewOnMap, true);
 			return;
 		}
 		var reportButton = event.target.closest('[data-report-id]');
@@ -832,7 +884,7 @@
 	});
 
 	document.getElementById('show-all-locations').addEventListener('click', function () {
-		elements.searchForm.reset();
+		document.getElementById('search-zip').value = '';
 		loadLocations({ all: true });
 	});
 
@@ -840,6 +892,7 @@
 		if (!navigator.geolocation) return showToast('Location is not available in this browser.');
 			navigator.geolocation.getCurrentPosition(
 			function (position) {
+				document.getElementById('search-zip').value = '';
 				loadLocations({ latitude: position.coords.latitude, longitude: position.coords.longitude });
 				if (map) map.setView([position.coords.latitude, position.coords.longitude], 12);
 			},
@@ -907,6 +960,7 @@
 			formStatus(form, error.message, 'error');
 		} finally {
 			setBusy(form, false);
+			if (window.turnstile && form.dataset.turnstileWidget) window.turnstile.reset(form.dataset.turnstileWidget);
 		}
 	});
 
@@ -925,6 +979,7 @@
 			formStatus(form, error.message, 'error');
 		} finally {
 			setBusy(form, false);
+			if (window.turnstile && form.dataset.turnstileWidget) window.turnstile.reset(form.dataset.turnstileWidget);
 		}
 	});
 
@@ -943,6 +998,7 @@
 			formStatus(form, error.message, 'error');
 		} finally {
 			setBusy(form, false);
+			if (window.turnstile && form.dataset.turnstileWidget) window.turnstile.reset(form.dataset.turnstileWidget);
 		}
 	});
 
@@ -962,10 +1018,19 @@
 			formStatus(form, error.message, 'error');
 		} finally {
 			setBusy(form, false);
+			if (window.turnstile && form.dataset.turnstileWidget) window.turnstile.reset(form.dataset.turnstileWidget);
 		}
 	});
 
 	elements.adminContent.addEventListener('click', async function (event) {
+		var category = event.target.closest('[data-verification-category]');
+		var page = event.target.closest('[data-verification-page]');
+		if (category || page) {
+			if (category) { state.verificationCategory = category.dataset.verificationCategory; state.verificationPage = 1; }
+			if (page) state.verificationPage = Number(page.dataset.verificationPage);
+			await loadAdmin();
+			return;
+		}
 		var reviewButton = event.target.closest('[data-review-suggestion]');
 		if (reviewButton) {
 			var suggestion = state.admin.suggestions.find(function (item) {
@@ -979,7 +1044,10 @@
 			var location = state.admin.locations.find(function (item) {
 				return Number(item.id) === Number(editButton.dataset.editLocation);
 			});
-			if (location) openReviewDialog(location, 'location');
+			try {
+				if (!location) { var response = await api('/api/admin/locations/' + editButton.dataset.editLocation, {}, true); location = response.location; }
+				if (location) openReviewDialog(location, 'location');
+			} catch (error) { showToast(error.message); }
 			return;
 		}
 		var verifyButton = event.target.closest('[data-run-verification]');
@@ -1046,6 +1114,7 @@
 			formStatus(form, error.message, 'error');
 		} finally {
 			setBusy(form, false);
+			if (window.turnstile && form.dataset.turnstileWidget) window.turnstile.reset(form.dataset.turnstileWidget);
 		}
 	});
 
@@ -1063,6 +1132,7 @@
 			formStatus(form, error.message, 'error');
 		} finally {
 			setBusy(form, false);
+			if (window.turnstile && form.dataset.turnstileWidget) window.turnstile.reset(form.dataset.turnstileWidget);
 		}
 	});
 

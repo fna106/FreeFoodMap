@@ -14,7 +14,7 @@
         <nav class="nav-links" aria-label="Main navigation">
             <a href="/admin">Admin</a>
             <a href="/admin/locations">Locations</a>
-            <a class="danger" href="/logout">Logout</a>
+            <form method="POST" action="/logout" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit"  class="danger"  >Logout</button></form>
         </nav>
     </header>
 
@@ -24,7 +24,7 @@
                 <h1>{% if location %}Edit{% else %}Add{% endif %} Location</h1>
             </div>
 
-            <form method="POST" class="form-grid">
+            <form method="POST" class="form-grid"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="return_to" value="{{ return_to or '/admin/locations' }}">
                 <div class="field">
                     <label>Location Name</label>

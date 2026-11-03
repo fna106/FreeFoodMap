@@ -529,6 +529,17 @@ h3 {
 	background: transparent;
 }
 
+.search-summary {
+	margin: 0;
+	padding: 12px 24px;
+	font-size: 13px;
+	color: #40546b;
+	border-bottom: 1px solid #d7dde5;
+}
+.verification-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.verification-tabs [aria-selected="true"] { background: #001e44; color: white; }
+.food-map-marker span { display: block; width: 18px; height: 18px; border: 2px solid white; border-radius: 50%; box-shadow: 0 1px 4px #0008; }
+
 .filter-row,
 .form-grid.two-column {
 	display: grid;

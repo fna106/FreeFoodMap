@@ -36,7 +36,7 @@
             <a class="btn btn-link" href="/map">Map</a>
 
             {% if session.user_id %}
-                <a class="btn btn-link text-danger" href="/logout">Logout</a>
+                <form method="POST" action="/logout" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit"  class="btn btn-link text-danger"  >Logout</button></form>
             {% else %}
                 <a class="btn btn-link" href="/login">Login</a>
                 <a class="btn btn-link" href="/register">Sign Up</a>
@@ -83,10 +83,10 @@
                         <a href="/admin/organizations/edit/{{ org.org_id }}"
                            class="btn btn-primary btn-sm">Edit</a>
 
-                        <a href="/admin/organizations/delete/{{ org.org_id }}"
+                        <form method="POST" action="/admin/organizations/delete/{{ org.org_id }}" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit"
                            class="btn btn-danger btn-sm">
                             Delete
-                        </a>
+                        </button></form>
                     </td>
                 </tr>
                 {% endfor %}
@@ -109,7 +109,7 @@
             Move all locations from one organization into another, then permanently delete the merged record.
         </p>
 
-        <form action="/admin/organizations/merge" method="POST" class="row">
+        <form action="/admin/organizations/merge" method="POST" class="row"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
             <div class="col-md-5 mb-3">
                 <label class="form-label">Merge From (Source)</label>

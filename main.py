@@ -3,10 +3,13 @@ from postgres_database_configuration import get_db_connection
 import hashlib
 import os
 import re
+from flask_wtf.csrf import CSRFProtect
+from werkzeug.security import generate_password_hash, check_password_hash
 from urllib.parse import urlparse
 
 app = Flask(__name__)
-app.secret_key = os.getenv("APP_SECRET_KEY", "dev-secret")
+app.secret_key = os.environ["APP_SECRET_KEY"]
+CSRFProtect(app)
 
 SERVICE_TYPES = [
     "Food Bank",
@@ -77,18 +80,14 @@ def get_safe_return_url(default="/admin/locations"):
 # using hashing SHA-1 and salt to create passwords for users without storing them in db
 
 def sha1_hash(password, salt=None):
-    if salt is None:
-        salt = os.urandom(16).hex()
-
-    hash_obj = hashlib.sha1()
-    hash_obj.update((salt + password).encode("utf-8"))
-    password_hash = hash_obj.hexdigest()
-    return salt, password_hash
+    return "", generate_password_hash(password)
 
 
 def verify_password(stored_hash, stored_salt, entered_password):
-    _, test_hash = sha1_hash(entered_password, salt=stored_salt)
-    return stored_hash == test_hash
+    if stored_hash.startswith(("scrypt:", "pbkdf2:")):
+        return check_password_hash(stored_hash, entered_password)
+    import hmac
+    return hmac.compare_digest(hashlib.sha1((stored_salt + entered_password).encode("utf-8")).hexdigest(), stored_hash)
 
 
 def load_organizations_for_form():
@@ -262,6 +261,13 @@ def login():
             user_id, username, stored_hash, salt, role, org_id = row
 
             if verify_password(stored_hash, salt, password):
+                if not stored_hash.startswith(("scrypt:", "pbkdf2:")):
+                    upgrade_conn = get_db_connection()
+                    upgrade_cur = upgrade_conn.cursor()
+                    upgrade_cur.execute("UPDATE freefoodmap.appuser SET password_hash=%s, salt='' WHERE user_id=%s", (generate_password_hash(password), user_id))
+                    upgrade_conn.commit()
+                    upgrade_cur.close()
+                    upgrade_conn.close()
 
                 # we save the user's id, username, and role in the session so we know who they are for later requests that need specific permissions
                 session["user_id"] = user_id
@@ -288,7 +294,7 @@ def login():
 
 
 # a function for logging out the user
-@app.route("/logout")
+@app.route("/logout", methods=["POST"])
 def logout():
     session.clear() #clean everything that was saved so they can't access anything they shouldn't
     return redirect("/")
@@ -346,7 +352,7 @@ def admin_pending():
     return render_template("admin_pending.html", users=users)
 
 # we are considering this as a transactional function, and we will implement a rollback and commit functionalities to it
-@app.route("/admin/approve/<int:request_id>")
+@app.route("/admin/approve/<int:request_id>", methods=["POST"])
 def approve_user(request_id):
     role = session.get("role")
 
@@ -364,7 +370,7 @@ def approve_user(request_id):
 
         # a query that gets the user request details from the ContributorRequest table to start the approval process
         cur.execute("""
-            SELECT name, email, phone_number, username, password_hash, salt, 
+            SELECT name, email, phone_number, username, password_hash, salt,
                    role_requested, organization
             FROM freefoodmap.ContributorRequest
             WHERE request_id = %s AND decision = 'pending'
@@ -449,7 +455,7 @@ def approve_user(request_id):
 
 
 # this part is the same as the approve_user function, except it denies the user request instead of approving it (change the decision type in the ContributorRequest table to 'rejected')
-@app.route("/admin/deny/<int:request_id>")
+@app.route("/admin/deny/<int:request_id>", methods=["POST"])
 def deny_user(request_id):
     role = session.get("role")
 
@@ -776,7 +782,7 @@ def edit_location(location_id):
     )
 
 
-@app.route("/admin/locations/delete/<int:location_id>")
+@app.route("/admin/locations/delete/<int:location_id>", methods=["POST"])
 def delete_location(location_id):
     role = session.get("role")
 
@@ -912,7 +918,7 @@ def admin_reports():
 
 
 # this part will change the status of a report to Resolved so that it won't show up in the admin reports page anymore
-@app.route("/admin/reports/resolve/<int:report_id>")
+@app.route("/admin/reports/resolve/<int:report_id>", methods=["POST"])
 def resolve_report(report_id):
     role = session.get("role")
 
@@ -1045,7 +1051,7 @@ def admin_edit_event(event_id):
 
 
 # this function to delete an event by the admin
-@app.route("/admin/events/delete/<int:event_id>")
+@app.route("/admin/events/delete/<int:event_id>", methods=["POST"])
 def admin_delete_event(event_id):
 
     role = session.get("role")
@@ -1277,7 +1283,7 @@ def approve_location_suggestion():
         )
 
 # if the admin rejects a suggestion, we will update the table and change the status to "rejected"
-@app.route("/admin/location-suggestions/reject/<int:suggestion_id>")
+@app.route("/admin/location-suggestions/reject/<int:suggestion_id>", methods=["POST"])
 def reject_location_suggestion(suggestion_id):
     role = session.get("role")
     if role != "admin":
@@ -1402,7 +1408,7 @@ def edit_organization(org_id):
     return render_template("admin_organizations_edit.html", org=org)
 
 # when the admin deletes an org, it will be removed from the database and the page will refresh
-@app.route("/admin/organizations/delete/<int:org_id>")
+@app.route("/admin/organizations/delete/<int:org_id>", methods=["POST"])
 def delete_organization(org_id):
     role = session.get("role")
     if role != "admin":
@@ -1814,7 +1820,7 @@ def edit_user(user_id):
 
 
 # admin can also delete a user account
-@app.route("/admin/users/delete/<int:user_id>")
+@app.route("/admin/users/delete/<int:user_id>", methods=["POST"])
 def delete_user(user_id):
 
     role = session.get("role")
@@ -1947,6 +1953,4 @@ def search_zip():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
-
-
+    app.run(debug=False)

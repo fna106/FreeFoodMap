@@ -10,7 +10,7 @@
 		<title>Free Food Map</title>
 		<link rel="manifest" href="/manifest.webmanifest" />
 		<link rel="icon" href="/icon-192.png" />
-		<link rel="stylesheet" href="/app.css?v=9" />
+		<link rel="stylesheet" href="/app.css?v=12" />
 	</head>
 	<body>
 		<a class="skip-link" href="#search-form">Skip to search</a>
@@ -88,7 +88,7 @@
 				<form id="search-form" class="search-form" role="search">
 					<label class="search-box" for="search-query">
 						<i data-lucide="search" aria-hidden="true"></i>
-						<input id="search-query" name="q" type="search" placeholder="Name, address, or organization" autocomplete="off" enterkeyhint="search" />
+						<input id="search-query" name="q" type="search" aria-label="Name, address, or organization" placeholder="Name, address, or organization" autocomplete="off" enterkeyhint="search" />
 					</label>
 					<div class="filter-row">
 						<label>
@@ -100,7 +100,8 @@
 							<select id="search-service" name="service"><option value="">Any service</option></select>
 						</label>
 					</div>
-					<small id="zip-help" class="field-help">Search loads only the area you request.</small>
+					<label><span>Distance</span><select id="search-radius" name="radius"><option value="1">Within 1 mile</option><option value="5" selected>Within 5 miles</option><option value="10">Within 10 miles</option><option value="25">Within 25 miles</option><option value="50">Within 50 miles</option><option value="100">Within 100 miles</option></select></label>
+					<small id="zip-help" class="field-help">Find nearby resources, including across ZIP boundaries. ZIP distances are approximate.</small>
 					<div class="search-options">
 						<label class="check-line"><input name="has_hours" type="checkbox" /> Has listed hours</label>
 						<label class="check-line"><input name="open_now" type="checkbox" /> Open now</label>
@@ -117,6 +118,7 @@
 						<i data-lucide="rotate-ccw" aria-hidden="true"></i>
 					</button>
 				</div>
+				<p id="search-summary" class="search-summary" aria-live="polite" hidden></p>
 				<div id="results" class="results" aria-live="polite"><div class="empty-state"><strong>Find food near you</strong>Enter a ZIP code or use your location to begin.</div></div>
 			</aside>
 
@@ -273,6 +275,6 @@
 		<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 		<script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.js" defer></script>
-		<script src="/app.js?v=10" defer></script>
+		<script src="/app.js?v=14" defer></script>
 	</body>
 </html>

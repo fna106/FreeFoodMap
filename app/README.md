@@ -14,7 +14,8 @@ This is the serverless replacement for the Flask/PostgreSQL application. One Clo
 - Twenty-four-hour community visit updates for open, available, temporarily closed, or long-wait signals
 - Admin review queue with edit-before-approve, reject, resolve, location editing, and automated verification evidence
 - Hourly geocoding for missing coordinates using the U.S. Census Geocoder
-- Hourly Cloudflare Workflow verification with direct fetch and Browser Rendering fallback
+- Scheduled Cloudflare Workflow verification with direct fetch and Browser Rendering fallback
+- Verification runs Monday and Thursday at 03:15 UTC (06:15 Riyadh); hourly geocoding remains separate. Only due locations are checked, with a retry cooldown. Manual checks remain available.
 - Dated verification evidence, source links, and explicit verified/partial/review states
 - Shareable server-rendered location pages, Schema.org JSON-LD, sitemap, robots file, and cached aggregate stats
 - HSDS-inspired open-data export at `/api/open-data/hsds`
@@ -34,9 +35,11 @@ pnpm db:local
 pnpm dev
 ~~~
 
-Open http://127.0.0.1:8787. The local admin key is local-admin when .dev.vars is absent. For a private local key, copy .dev.vars.example to .dev.vars and replace both values.
+Copy .dev.vars.example to .dev.vars and replace both values before starting. Open http://127.0.0.1:8787 and use your configured ADMIN_TOKEN to access review tools. Configure an explicit key: the hostname-based fallback is unreliable under Wrangler's production-domain routing.
 
 The first page intentionally does not fetch location records. Search with a ZIP code, use the location button, or click **Show all**.
+
+ZIP and device-location searches default to a **5-mile radius**, with 1, 5, 10, 25, 50, and 100-mile distance choices. ZIP searches use an approximate ZIP center from Zippopotam.us, so results can include resources across ZIP boundaries; displayed distances are straight-line estimates, not driving distances. Successful ZIP-coordinate lookups are cached for 30 days. If that service is unavailable, exact-ZIP search still works and the interface explains that distance filtering could not be applied. **Show all** searches statewide and preserves the other filters.
 
 Regenerate the CSV seed migration after changing the source data:
 
@@ -131,3 +134,15 @@ The account ID is a non-secret value stored in `wrangler.jsonc`. The API token s
 - location_search: D1 FTS5 index for public search
 
 The legacy Flask source remains at the repository root during the transition. It can be archived after the Cloudflare deployment and production data are verified.
+
+## Audit fixes and review queue
+
+Verification is grouped by reason, with 50 locations per page and one latest check per active location. Completed checks are separated from actionable work; older jobs remain stored for audit history. Saving a location with **Mark information verified today** resolves its latest verification job.
+
+Migrations 0009–0011 correct stale seed schedules conservatively, deactivate three exact duplicate listings without deleting their history, and prevent repeat location submissions. Uncertain monthly, mixed-purpose, and split schedules remain text-only. Location edits regenerate safe schedules and invalidate verification claims for changed fields.
+
+Discovery now excludes all existing locations and suggestion history, checks duplicates again when applying its batch, and refuses to overwrite an unreviewed discovery migration. The server also rejects repeated pending submissions atomically.
+
+Mutable search, stats, detail, and export responses use fresh server data. Offline searches still use the service worker's last successful response; metadata is precached with the app shell.
+
+The legacy Flask reference now requires `APP_SECRET_KEY`, Flask-WTF, and POST requests with CSRF tokens for mutations. Before running it against an existing PostgreSQL installation, review and apply `../legacy-security-migration.sql` to support modern password hashes. Existing SHA-1 passwords are upgraded on successful login. PostgreSQL migration execution is separate from D1 deployment.

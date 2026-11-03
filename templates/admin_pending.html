@@ -28,7 +28,7 @@
             <a class="btn btn-link" href="/map">Map</a>
 
             {% if session.user_id %}
-                <a class="btn btn-link text-danger" href="/logout">Logout</a>
+                <form method="POST" action="/logout" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit"  class="btn btn-link text-danger"  >Logout</button></form>
             {% else %}
                 <a class="btn btn-link" href="/login">Login</a>
                 <a class="btn btn-link" href="/register">Sign Up</a>
@@ -75,8 +75,8 @@
                     <td>{{ u.reason }}</td>
 
                     <td>
-                        <a href="/admin/approve/{{ u.request_id }}" class="btn btn-success btn-sm">Approve</a>
-                        <a href="/admin/deny/{{ u.request_id }}" class="btn btn-danger btn-sm">Deny</a>
+                        <form method="POST" action="/admin/approve/{{ u.request_id }}" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit"    class="btn btn-success btn-sm">Approve</button></form>
+                        <form method="POST" action="/admin/deny/{{ u.request_id }}" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit"    class="btn btn-danger btn-sm">Deny</button></form>
                     </td>
                 </tr>
             {% endfor %}
@@ -95,4 +95,3 @@
 <script src="/static/scripts/admin_table_filter.js"></script>
 </body>
 </html>
-

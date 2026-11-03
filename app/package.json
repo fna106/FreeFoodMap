@@ -15,20 +15,20 @@
 		"locations:add": "node scripts/discover-pa211-locations.mjs --apply",
 		"hours:normalize": "node scripts/normalize-hours.mjs",
 		"db:local": "wrangler d1 migrations apply free-food-map-db --local",
-		"check": "tsc --noEmit && vitest run",
+		"check": "tsc --noEmit && vitest run && node --test test/search-client.mjs",
 		"test": "vitest",
 		"cf-typegen": "wrangler types"
 	},
 	"devDependencies": {
 		"@cloudflare/puppeteer": "^1.4.0",
-		"@cloudflare/vitest-plugin": "^1.0.0",
-		"csv-parse": "^7.0.2",
-		"typescript": "^5.5.2",
-		"vitest": "~4.1.0",
-		"wrangler": "^4"
+		"@cloudflare/vitest-plugin": "^1.4.12",
+		"csv-parse": "^7.0.3",
+		"typescript": "^5.9.3",
+		"vitest": "~4.1.12",
+		"wrangler": "^4.156.1"
 	},
 	"dependencies": {
-		"jose": "^6.2.12",
+		"jose": "^6.2.15",
 		"leaflet": "1.9.4",
 		"leaflet.markercluster": "1.5.3"
 	}

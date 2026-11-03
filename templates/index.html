@@ -15,7 +15,7 @@
             <a href="/map">Map</a>
             <a href="/suggest-location">Suggest Location</a>
             {% if session.user_id %}
-                <a class="danger" href="/logout">Logout</a>
+                <form method="POST" action="/logout" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit"  class="danger"  >Logout</button></form>
             {% else %}
                 <a href="/login">Login</a>
                 <a href="/register">Sign Up</a>
@@ -43,7 +43,7 @@
                 <p>Search by ZIP code, review the details, and report anything that looks outdated.</p>
             </div>
 
-            <form action="/search-zip" method="GET" class="search-entry">
+            <form action="/search-zip" method="GET" class="search-entry"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <label class="sr-only" for="zipcode">ZIP code</label>
                 <input id="zipcode"
                        type="text"

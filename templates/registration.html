@@ -17,7 +17,7 @@
             <a href="/map">Map</a>
             <a href="/suggest-location">Suggest Location</a>
             {% if session.user_id %}
-                <a class="danger" href="/logout">Logout</a>
+                <form method="POST" action="/logout" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit"  class="danger"  >Logout</button></form>
             {% else %}
                 <a href="/login">Login</a>
                 <a href="/register">Sign Up</a>
@@ -44,7 +44,7 @@
                 <div class="alert alert-info">{{ organization_warning }}</div>
             {% endif %}
 
-            <form action="/register" method="POST" class="form-grid">
+            <form action="/register" method="POST" class="form-grid"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="field">
                     <label>Full Name</label>
                     <input name="name" required>

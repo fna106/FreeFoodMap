@@ -1,3 +1,4 @@
+import { normalizeRecord } from './hours.js';
 import puppeteer from '@cloudflare/puppeteer';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from 'cloudflare:workers';
@@ -22,6 +23,9 @@ export interface Env {
 }
 
 type JsonRecord = Record<string, unknown>;
+class RequestError extends Error {
+	constructor(message: string, readonly status = 400) { super(message); }
+}
 
 export const SERVICE_TYPES = [
 	'Food Bank',
@@ -51,6 +55,13 @@ async function cachedPublicResponse(
 	ttlSeconds: number,
 	loader: () => Promise<Response>,
 ): Promise<Response> {
+	const path = new URL(request.url).pathname;
+	if ((path.startsWith('/api/') && path !== '/api/meta') || path.startsWith('/locations/')) {
+		const response = await loader();
+		const headers = new Headers(response.headers);
+		headers.set('cache-control', 'no-store');
+		return new Response(response.body, { status: response.status, headers });
+	}
 	const cache = caches.default;
 	const cacheKey = new Request(request.url, { method: 'GET', headers: { accept: request.headers.get('accept') || '*/*' } });
 	const cached = await cache.match(cacheKey);
@@ -88,7 +99,7 @@ export function isValidZip(value: string): boolean {
 }
 
 export function matchedAddressHasZip(matchedAddress: string, expectedZip: string): boolean {
-	const matchedZip = matchedAddress.match(/\b\d{5}(?:-\d{4})?\b/)?.[0]?.slice(0, 5) || '';
+	const matchedZip = matchedAddress.match(/,\s*(\d{5})(?:-\d{4})?\s*$/)?.[1] || '';
 	return isValidZip(expectedZip) && matchedZip === expectedZip;
 }
 
@@ -168,7 +179,7 @@ function escapeXml(value: unknown): string {
 }
 
 function coordinate(value: unknown, fallback: unknown, minimum: number, maximum: number): number | null {
-	const candidate = value === '' || value == null ? fallback : value;
+	const candidate = value === undefined ? fallback : value;
 	if (candidate === '' || candidate == null) return null;
 	const number = Number(candidate);
 	return Number.isFinite(number) && number >= minimum && number <= maximum ? number : null;
@@ -176,10 +187,25 @@ function coordinate(value: unknown, fallback: unknown, minimum: number, maximum:
 
 async function readBody(request: Request): Promise<JsonRecord> {
 	const size = Number(request.headers.get('content-length') || '0');
-	if (size > 64_000) throw new Error('Request is too large.');
-	const value = await request.json();
+	if (size > 64_000) throw new RequestError('Request is too large.', 413);
+	const reader = request.body?.getReader();
+	let bytes = 0;
+	const chunks: Uint8Array[] = [];
+	if (reader) for (;;) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		bytes += value.byteLength;
+		if (bytes > 64_000) { await reader.cancel(); throw new RequestError('Request is too large.', 413); }
+		chunks.push(value);
+	}
+	const buffer = new Uint8Array(bytes);
+	let offset = 0;
+	for (const chunk of chunks) { buffer.set(chunk, offset); offset += chunk.byteLength; }
+	let value: unknown;
+	try { value = JSON.parse(new TextDecoder().decode(buffer)); }
+	catch { throw new RequestError('Enter a valid JSON object.'); }
 	if (!value || typeof value !== 'object' || Array.isArray(value)) {
-		throw new Error('Invalid request body.');
+		throw new RequestError('Invalid request body.');
 	}
 	return value as JsonRecord;
 }
@@ -188,7 +214,7 @@ function suggestionFields(body: JsonRecord) {
 	return {
 		name: clean(body.name, 140),
 		address: clean(body.address, 240),
-		zip_code: clean(body.zip_code, 5),
+		zip_code: clean(body.zip_code, 120),
 		service_type: clean(body.service_type, 60),
 		organization_name: optional(body.organization_name, 140),
 		hours: optional(body.hours, 500),
@@ -272,25 +298,53 @@ async function validateTurnstile(request: Request, env: Env, token: unknown): Pr
 	}
 }
 
-async function listLocations(request: Request, env: Env): Promise<Response> {
+async function resolveZipCenter(zip: string): Promise<{ latitude: number; longitude: number } | null> {
+	const request = new Request(`https://api.zippopotam.us/us/${zip}`);
+	try {
+		const cached = await caches.default.match(request);
+		const response = cached || await fetch(request, { signal: AbortSignal.timeout(5000) });
+		if (!response.ok) return null;
+		const data = await response.clone().json() as { places?: Array<{ latitude?: string; longitude?: string }> };
+		const place = data.places?.[0];
+		const latitude = finiteNumber(place?.latitude ?? null, -90, 90);
+		const longitude = finiteNumber(place?.longitude ?? null, -180, 180);
+		if (latitude == null || longitude == null) return null;
+		if (!cached) await caches.default.put(request, new Response(JSON.stringify(data), {
+			headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=2592000' },
+		}));
+		return { latitude, longitude };
+	} catch {
+		return null;
+	}
+}
+
+export async function listLocations(request: Request, env: Env): Promise<Response> {
 	const url = new URL(request.url);
-	const zip = clean(url.searchParams.get('zip'), 5);
+	const zip = clean(url.searchParams.get('zip'), 120);
 	const service = clean(url.searchParams.get('service'), 60);
 	const query = clean(url.searchParams.get('q'), 120);
 	const hasHours = url.searchParams.get('has_hours') === 'true';
 	const openNow = url.searchParams.get('open_now') === 'true';
 	const showAll = url.searchParams.get('all') === 'true';
-	const latitude = finiteNumber(url.searchParams.get('lat'), -90, 90);
-	const longitude = finiteNumber(url.searchParams.get('lon'), -180, 180);
+	let latitude = finiteNumber(url.searchParams.get('lat'), -90, 90);
+	let longitude = finiteNumber(url.searchParams.get('lon'), -180, 180);
 	const requestedNearby = url.searchParams.has('lat') || url.searchParams.has('lon');
-	const nearby = latitude != null && longitude != null;
+	if (zip && !isValidZip(zip)) return json({ error: 'Enter a valid five-digit ZIP code.' }, 400);
+	if (requestedNearby && (latitude == null || longitude == null)) return json({ error: 'Valid latitude and longitude are required for nearby search.' }, 400);
 	const requestedRadius = finiteNumber(url.searchParams.get('radius'), 1, 100);
-	const radius = requestedRadius || 10;
+	if (url.searchParams.has('radius') && requestedRadius == null) return json({ error: 'Choose a distance between 1 and 100 miles.' }, 400);
+	const radius = requestedRadius ?? 5;
+	let zipCenterUnavailable = false;
+	if (zip && !requestedNearby) {
+		const center = await resolveZipCenter(zip);
+		if (center) ({ latitude, longitude } = center);
+		else zipCenterUnavailable = true;
+	}
+	const nearby = latitude != null && longitude != null;
 	const conditions = ["l.status = 'active'"];
 	const bindings: unknown[] = [];
 
-	if (zip) {
-		if (!isValidZip(zip)) return json({ error: 'Enter a valid five-digit ZIP code.' }, 400);
+	if (zip && !nearby) {
 		conditions.push('l.zip_code = ?');
 		bindings.push(zip);
 	}
@@ -313,11 +367,12 @@ async function listLocations(request: Request, env: Env): Promise<Response> {
 	if (hasHours) conditions.push("l.hours IS NOT NULL AND trim(l.hours) != ''");
 
 	if (nearby && latitude != null && longitude != null) {
-		const latitudeDelta = radius / 69;
-		const longitudeDelta = radius / Math.max(12, 69 * Math.cos((latitude * Math.PI) / 180));
-		conditions.push('l.latitude BETWEEN ? AND ?');
-		conditions.push('l.longitude BETWEEN ? AND ?');
+		// A conservative bounding box; the exact great-circle distance is checked below.
+		const latitudeDelta = radius / 68;
+		const longitudeDelta = Math.abs(latitude) + latitudeDelta >= 90 ? 180 : radius / (68 * Math.cos(((Math.abs(latitude) + latitudeDelta) * Math.PI) / 180));
+		conditions.push(`((l.latitude BETWEEN ? AND ? AND l.longitude BETWEEN ? AND ?)${zip ? ' OR (l.zip_code = ? AND (l.latitude IS NULL OR l.longitude IS NULL))' : ''})`);
 		bindings.push(latitude - latitudeDelta, latitude + latitudeDelta, longitude - longitudeDelta, longitude + longitudeDelta);
+		if (zip) bindings.push(zip);
 	}
 
 	const clock = easternClock();
@@ -356,21 +411,26 @@ async function listLocations(request: Request, env: Env): Promise<Response> {
 	if (nearby && latitude != null && longitude != null) {
 		locations = locations
 			.map((location) => {
+				if (location.latitude == null || location.longitude == null) return { ...location, distance_miles: null };
 				const distance = haversineMiles(latitude, longitude, Number(location.latitude), Number(location.longitude));
-				return { ...location, distance_miles: Math.round(distance * 10) / 10 };
+				return { ...location, distance_miles: distance };
 			})
-			.filter((location) => Number(location.distance_miles) <= radius)
-			.sort((a, b) => Number(a.distance_miles) - Number(b.distance_miles));
+			.filter((location) => location.distance_miles == null || Number(location.distance_miles) <= radius)
+			.sort((a, b) => (a.distance_miles ?? Infinity) - (b.distance_miles ?? Infinity));
 		const limit = Math.min(250, Math.max(1, Number(url.searchParams.get('limit')) || 100));
-		locations = locations.slice(0, limit);
+		locations = locations.slice(0, limit).map((location) => ({ ...location, distance_miles: location.distance_miles == null ? null : Math.round(Number(location.distance_miles) * 10) / 10 }));
 	}
 	return json({
 		locations,
 		service_types: SERVICE_TYPES,
 		meta: {
-			mode: showAll ? 'all' : nearby ? 'nearby' : 'zip',
+			mode: nearby ? 'nearby' : zip ? 'zip' : 'all',
 			count: locations.length,
 			radius_miles: nearby ? radius : null,
+			unmapped_count: locations.filter(l=>l.latitude == null || l.longitude == null).length,
+			origin_zip: zip || null,
+			approximate_origin: Boolean(zip && nearby && !requestedNearby),
+			zip_center_unavailable: zipCenterUnavailable,
 		},
 	});
 }
@@ -464,13 +524,13 @@ async function renderLocationPage(env: Env, id: number, requestedSlug: string): 
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#001e44"><meta name="description" content="${escapeHtml(description)}">
 <meta property="og:title" content="${escapeHtml(location.name)} | Free Food Map"><meta property="og:description" content="${escapeHtml(description)}">
-<link rel="canonical" href="${canonical}"><link rel="icon" href="/icon-192.png"><link rel="stylesheet" href="/app.css?v=9">
+<link rel="canonical" href="${canonical}"><link rel="icon" href="/icon-192.png"><link rel="stylesheet" href="/app.css?v=12">
 <title>${escapeHtml(location.name)} | Free Food Map</title><script type="application/ld+json">${JSON.stringify(schema).replace(/</g, '\\u003c')}</script></head>
 <body class="location-page"><header class="app-header"><a class="brand" href="/"><span class="brand-mark">FF</span><span><strong>Free Food Map</strong><small>Community initiative</small></span></a><a class="button button-primary" href="/?zip=${escapeHtml(location.zip_code)}#map">Search the map</a></header>
 <main class="location-detail"><p class="eyebrow">${escapeHtml(location.service_type)}</p><h1>${escapeHtml(location.name)}</h1>
 ${location.organization_name ? `<p class="location-organization">${escapeHtml(location.organization_name)}</p>` : ''}
 <address>${escapeHtml(location.address)} ${escapeHtml(location.zip_code)}</address><div class="location-actions">${actions}</div>
-<dl class="location-facts">${detail('Hours', location.hours)}${detail('Eligibility', location.eligibility)}${detail('Accessibility', location.accessibility)}${detail('Languages', location.languages)}${detail('Phone', location.contact_phone)}${detail('Email', location.contact_email)}${detail('Notes', location.notes)}${detail('Last reviewed', verifiedDate ? String(verifiedDate).slice(0, 10) : 'Not yet verified')}</dl>
+<dl class="location-facts">${detail('Appointment', location.appointment_required ? 'Required — contact this location before visiting.' : '')}${detail('Hours', location.hours)}${detail('Eligibility', location.eligibility)}${detail('Accessibility', location.accessibility)}${detail('Languages', location.languages)}${detail('Phone', location.contact_phone)}${detail('Email', location.contact_email)}${detail('Notes', location.notes)}${detail('Last reviewed', verifiedDate ? String(verifiedDate).slice(0, 10) : 'Not yet verified')}</dl>
 <p class="location-caution">Hours and availability can change. Call before visiting.</p>
 <a href="/?zip=${escapeHtml(location.zip_code)}#map">See other resources in ${escapeHtml(location.zip_code)}</a></main></body></html>`;
 	return htmlResponse(markup, 200, { 'cache-control': 'public, max-age=3600, stale-while-revalidate=86400' });
@@ -566,6 +626,7 @@ async function submitSuggestion(request: Request, env: Env, ctx: ExecutionContex
 		.run();
 
 	const id = Number(insert.meta.last_row_id);
+	if (!insert.meta.changes) return json({ error: 'This location is already listed or has already been submitted for review.' }, 409);
 	ctx.waitUntil(geocodeSuggestion(env, id));
 	return json(
 		{
@@ -691,9 +752,7 @@ async function hasValidAccessIdentity(request: Request, env: Env): Promise<boole
 
 async function isAdmin(request: Request, env: Env): Promise<boolean> {
 	if (await hasValidAccessIdentity(request, env)) return true;
-	const hostname = new URL(request.url).hostname;
-	const localDevelopment = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
-	const expected = env.ADMIN_TOKEN || (localDevelopment ? 'local-admin' : '');
+	const expected = env.ADMIN_TOKEN || '';
 	if (!expected) return false;
 	const header = request.headers.get('authorization') || '';
 	const supplied = header.startsWith('Bearer ') ? header.slice(7) : '';
@@ -713,9 +772,38 @@ async function adminOverview(env: Env): Promise<Response> {
 			(SELECT COUNT(*) FROM location_confirmations WHERE submitted_at >= datetime('now', '-24 hours')) AS recent_confirmations,
 			(SELECT COUNT(DISTINCT location_id) FROM location_operating_hours) AS locations_with_structured_hours,
 			(SELECT COUNT(*) FROM verification_jobs WHERE status IN ('queued', 'running')) AS active_verification_jobs,
-			(SELECT COUNT(*) FROM verification_jobs WHERE status IN ('proposed', 'needs_review', 'failed')) AS verification_jobs_needing_review`,
+			(SELECT COUNT(*) FROM verification_jobs j JOIN locations l ON l.id=j.location_id WHERE l.status='active' AND j.status IN ('proposed','needs_review','failed') AND j.id=(SELECT MAX(v.id) FROM verification_jobs v WHERE v.location_id=j.location_id)) AS verification_jobs_needing_review`,
 	).first();
 	return json({ counts });
+}
+
+async function verificationQueue(request: Request, env: Env): Promise<Response> {
+	const params = new URL(request.url).searchParams;
+	const category = params.get('category') || 'attention';
+	const categories = ['attention','identity','hours','contact','other','failed','running','confirmed','mapping'];
+	if (!categories.includes(category)) return json({ error: 'Unknown verification category.' }, 400);
+	const page = Math.max(1, Math.floor(Number(params.get('page')) || 1));
+	const cte = `WITH latest AS (SELECT j.*, l.name AS location_name,l.address AS location_address,
+	 CASE WHEN j.status='failed' THEN 'failed' WHEN j.status IN ('queued','running') THEN 'running'
+	 WHEN j.status='confirmed' THEN 'confirmed'
+	 WHEN EXISTS(SELECT 1 FROM json_each(CASE WHEN json_valid(j.evidence_json) THEN j.evidence_json ELSE '{}' END,'$.checks') c WHERE json_extract(c.value,'$.field') IN ('name','address','zip') AND json_extract(c.value,'$.confirmed')=0) THEN 'identity'
+	 WHEN EXISTS(SELECT 1 FROM json_each(CASE WHEN json_valid(j.evidence_json) THEN j.evidence_json ELSE '{}' END,'$.checks') c WHERE json_extract(c.value,'$.field')='hours' AND json_extract(c.value,'$.confirmed')=0) THEN 'hours'
+	 WHEN EXISTS(SELECT 1 FROM json_each(CASE WHEN json_valid(j.evidence_json) THEN j.evidence_json ELSE '{}' END,'$.checks') c WHERE json_extract(c.value,'$.field')='phone' AND json_extract(c.value,'$.confirmed')=0) THEN 'contact'
+	 ELSE 'other' END AS reason
+	 FROM verification_jobs j JOIN locations l ON l.id=j.location_id WHERE l.status='active'
+	 AND j.id=(SELECT MAX(v.id) FROM verification_jobs v WHERE v.location_id=j.location_id))`;
+	const counts = (await env.DB.prepare(cte+' SELECT reason,COUNT(*) AS total FROM latest GROUP BY reason').all<{reason:string;total:number}>()).results;
+	const mappingTotal = Number(await env.DB.prepare("SELECT COUNT(*) n FROM locations WHERE status='active' AND (latitude IS NULL OR longitude IS NULL)").first('n'));
+	counts.push({reason:'mapping',total:mappingTotal});
+	if (category === 'mapping') {
+		const rows=await env.DB.prepare("SELECT id, id AS location_id,name AS location_name,address AS location_address,source_url,'needs_coordinates' AS status,updated_at AS scheduled_for,'Full street address, city and ZIP need a confirmed map position.' AS error_message FROM locations WHERE status='active' AND (latitude IS NULL OR longitude IS NULL) ORDER BY id LIMIT 50 OFFSET ?").bind((page-1)*50).all();
+		return json({verification_jobs:rows.results,counts,total:mappingTotal,page,page_size:50});
+	}
+	const where = category === 'attention' ? "reason NOT IN ('confirmed','running')" : 'reason = ?';
+	const bindings = category === 'attention' ? [] : [category];
+	const result = await env.DB.prepare(cte+` SELECT * FROM latest WHERE ${where} ORDER BY updated_at DESC,id DESC LIMIT 50 OFFSET ?`).bind(...bindings,(page-1)*50).all();
+	const total = counts.filter(c=>category==='attention' ? !['confirmed','running','mapping'].includes(c.reason) : c.reason===category).reduce((n,c)=>n+c.total,0);
+	return json({ verification_jobs: result.results, counts, total, page, page_size:50 });
 }
 
 async function adminList(env: Env, kind: 'suggestions' | 'reports' | 'locations' | 'verification-jobs'): Promise<Response> {
@@ -825,6 +913,7 @@ async function reviewSuggestion(request: Request, env: Env, id: number, action: 
 			verificationStatus, verifiedFields, markedVerified ? fields.source_url : null,
 			markedVerified ? reviewNotes : null, verifiedAt, verifiedAt, verificationDue, id,
 		),
+		...normalizeRecord(fields).rows.map(row => env.DB.prepare('INSERT INTO location_operating_hours(location_id,day_of_week,opens_at,closes_at,source_url) SELECT id,?,?,?,? FROM locations WHERE source_suggestion_id=?').bind(row.day,row.opens,row.closes,fields.source_url,id)),
 		env.DB.prepare(
 			`UPDATE suggestions SET status = 'approved', review_notes = ?, reviewed_at = CURRENT_TIMESTAMP,
 			published_location_id = (SELECT id FROM locations WHERE source_suggestion_id = ?)
@@ -854,8 +943,13 @@ async function updateLocation(request: Request, env: Env, id: number): Promise<R
 	const validationError = validateSuggestion(fields);
 	if (validationError) return json({ error: validationError }, 400);
 	const status = body.status === 'inactive' ? 'inactive' : 'active';
+	for (const [field, minimum, maximum] of [['latitude', -90, 90], ['longitude', -180, 180]] as const) {
+		const value = body[field];
+		if (value != null && value !== '' && (!Number.isFinite(Number(value)) || Number(value) < minimum || Number(value) > maximum)) return json({ error: `Enter a valid ${field}.` }, 400);
+	}
 	let lat = coordinate(body.latitude, existing.latitude, -90, 90);
 	let lon = coordinate(body.longitude, existing.longitude, -180, 180);
+	if ((lat == null) !== (lon == null)) return json({ error: 'Provide both coordinates, or clear both.' }, 400);
 	const addressChanged = normalized(fields.address) !== normalized(String(existing.address)) || fields.zip_code !== existing.zip_code;
 	const coordinatesEdited =
 		(body.latitude !== '' && body.latitude != null && Number(body.latitude) !== Number(existing.latitude)) ||
@@ -865,6 +959,8 @@ async function updateLocation(request: Request, env: Env, id: number): Promise<R
 		lat = geocoded?.latitude ?? null;
 		lon = geocoded?.longitude ?? null;
 	}
+	const changed = ['name','address','zip_code','service_type','hours','contact_phone','contact_email','contact_web','source_url'].some(key => fields[key as keyof typeof fields] !== existing[key]);
+	if (changed) { existing.verification_status = 'unverified'; existing.verified_fields = null; existing.last_verified_at = null; existing.last_reviewed_at = null; existing.verification_source_url = null; existing.verification_notes = null; existing.verification_due_at = null; }
 	const markedVerified = body.mark_verified === true;
 	const verifiedAt = markedVerified ? new Date().toISOString() : existing.last_verified_at;
 	const verificationStatus = markedVerified ? 'verified' : String(existing.verification_status || 'unverified');
@@ -876,6 +972,7 @@ async function updateLocation(request: Request, env: Env, id: number): Promise<R
 	const reviewedAt = markedVerified ? verifiedAt : existing.last_reviewed_at;
 	const verificationDue = markedVerified ? nextVerificationDue() : existing.verification_due_at;
 	const scheduleTimezone = clean(body.schedule_timezone ?? existing.schedule_timezone, 80) || 'America/New_York';
+	if (scheduleTimezone !== 'America/New_York') return json({ error: 'Structured schedules currently support America/New_York only.' }, 400);
 
 	await env.DB.batch([
 		env.DB.prepare(
@@ -895,18 +992,21 @@ async function updateLocation(request: Request, env: Env, id: number): Promise<R
 			status, verificationStatus, verifiedFields, verificationSource, verificationNotes,
 			verifiedAt, reviewedAt, verificationDue, id,
 		),
+		env.DB.prepare("UPDATE verification_jobs SET status='confirmed', completed_at=CURRENT_TIMESTAMP WHERE location_id=? AND id=(SELECT MAX(id) FROM verification_jobs WHERE location_id=?) AND ?=1").bind(id,id,markedVerified ? 1 : 0),
+		env.DB.prepare('DELETE FROM location_operating_hours WHERE location_id = ?').bind(id),
+		...normalizeRecord(fields).rows.map((row) => env.DB.prepare('INSERT INTO location_operating_hours(location_id,day_of_week,opens_at,closes_at,source_url) VALUES (?,?,?,?,?)').bind(id,row.day,row.opens,row.closes,fields.source_url)),
 		env.DB.prepare("INSERT INTO workflow_events (entity_type, entity_id, action, note) VALUES ('location', ?, 'updated', ?)").bind(id, optional(body.review_notes, 1200)),
 	]);
 	return json({ ok: true });
 }
 
-async function geocodeAddress(address: string, expectedZip: string): Promise<{ latitude: number; longitude: number } | null> {
+export async function geocodeAddress(address: string, expectedZip: string): Promise<{ latitude: number; longitude: number } | null> {
 	const url = new URL('https://geocoding.geo.census.gov/geocoder/locations/onelineaddress');
 	url.searchParams.set('address', address);
 	url.searchParams.set('benchmark', 'Public_AR_Current');
 	url.searchParams.set('format', 'json');
 	try {
-		const response = await fetch(url.toString(), { headers: { accept: 'application/json' } });
+		const response = await fetch(url.toString(), { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(8000) });
 		if (!response.ok) return null;
 		const data = (await response.json()) as {
 			result?: { addressMatches?: Array<{ matchedAddress?: string; coordinates?: { x: number; y: number } }> };
@@ -926,8 +1026,9 @@ async function geocodeAddress(address: string, expectedZip: string): Promise<{ l
 }
 
 async function geocodeSuggestion(env: Env, id: number): Promise<void> {
-	const row = await env.DB.prepare('SELECT address, zip_code FROM suggestions WHERE id = ? AND latitude IS NULL').bind(id).first<{ address: string; zip_code: string }>();
+	const row = await env.DB.prepare('SELECT address, zip_code FROM suggestions WHERE id = ? AND (latitude IS NULL OR longitude IS NULL)').bind(id).first<{ address: string; zip_code: string }>();
 	if (!row) return;
+	await env.DB.prepare('UPDATE suggestions SET geocode_attempted_at=CURRENT_TIMESTAMP WHERE id=?').bind(id).run();
 	const coordinates = await geocodeAddress(row.address + ' ' + row.zip_code, row.zip_code);
 	if (coordinates) {
 		await env.DB.prepare('UPDATE suggestions SET latitude = ?, longitude = ? WHERE id = ?')
@@ -936,12 +1037,13 @@ async function geocodeSuggestion(env: Env, id: number): Promise<void> {
 	}
 }
 
-async function geocodeMissing(env: Env): Promise<void> {
-	const suggestions = await env.DB.prepare("SELECT id FROM suggestions WHERE status = 'pending' AND latitude IS NULL ORDER BY submitted_at LIMIT 5").all<{ id: number }>();
+export async function geocodeMissing(env: Env): Promise<void> {
+	const suggestions = await env.DB.prepare("SELECT id FROM suggestions WHERE status = 'pending' AND (latitude IS NULL OR longitude IS NULL) AND (geocode_attempted_at IS NULL OR geocode_attempted_at < datetime('now','-1 day')) ORDER BY geocode_attempted_at,id LIMIT 5").all<{ id: number }>();
 	for (const row of suggestions.results) await geocodeSuggestion(env, row.id);
 
-	const locations = await env.DB.prepare("SELECT id, address, zip_code FROM locations WHERE status = 'active' AND latitude IS NULL ORDER BY id LIMIT 20").all<{ id: number; address: string; zip_code: string }>();
+	const locations = await env.DB.prepare("SELECT id, address, zip_code FROM locations WHERE status = 'active' AND (latitude IS NULL OR longitude IS NULL) AND (geocode_attempted_at IS NULL OR geocode_attempted_at < datetime('now','-1 day')) ORDER BY geocode_attempted_at,id LIMIT 20").all<{ id: number; address: string; zip_code: string }>();
 	for (const row of locations.results) {
+		await env.DB.prepare('UPDATE locations SET geocode_attempted_at=CURRENT_TIMESTAMP WHERE id=?').bind(row.id).run();
 		const coordinates = await geocodeAddress(row.address + ' ' + row.zip_code, row.zip_code);
 		if (coordinates) {
 			await env.DB.prepare('UPDATE locations SET latitude = ?, longitude = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
@@ -1014,7 +1116,7 @@ function evidenceMatch(sourceText: string, value: string | null, mode: 'text' | 
 	return needle.length >= 3 && normalized(sourceText).includes(needle);
 }
 
-async function performVerification(env: Env, locationId: number, jobId: number): Promise<{ status: string; confirmed_fields: string[] }> {
+export async function performVerification(env: Env, locationId: number, jobId: number): Promise<{ status: string; confirmed_fields: string[] }> {
 	const target = await env.DB.prepare(
 		`SELECT id, name, address, zip_code, contact_phone, hours, verification_status,
 			COALESCE(NULLIF(verification_source_url, ''), NULLIF(source_url, ''), contact_web) AS source_url
@@ -1022,7 +1124,10 @@ async function performVerification(env: Env, locationId: number, jobId: number):
 	)
 		.bind(locationId)
 		.first<VerificationTarget>();
-	if (!target?.source_url) throw new Error('No public source URL is available for this location.');
+	if (!target?.source_url) {
+		await env.DB.prepare("UPDATE verification_jobs SET status='failed',error_message='Location is inactive or has no public source',completed_at=CURRENT_TIMESTAMP WHERE id=?").bind(jobId).run();
+		throw new Error('No public source URL is available for this location.');
+	}
 	await env.DB.prepare("UPDATE verification_jobs SET status = 'running', started_at = CURRENT_TIMESTAMP, attempt_count = attempt_count + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(jobId).run();
 
 	try {
@@ -1046,11 +1151,12 @@ async function performVerification(env: Env, locationId: number, jobId: number):
 			`UPDATE verification_jobs SET status = ?, evidence_json = ?, error_message = NULL,
 			 completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
 		).bind(jobStatus, JSON.stringify(evidence), jobId));
+		if (!exact) statements.push(env.DB.prepare("UPDATE locations SET verification_status='needs_review', verified_fields=NULL, verification_due_at=datetime('now','+7 days'), updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(locationId));
 		if (exact) {
 			statements.push(env.DB.prepare(
-				`UPDATE locations SET verification_status = CASE WHEN verification_status = 'verified' THEN 'verified' ELSE 'partial' END,
+				`UPDATE locations SET verification_status = 'partial', verified_fields = ?, verification_source_url = ?, last_verified_at = CURRENT_TIMESTAMP,
 			 last_reviewed_at = CURRENT_TIMESTAMP, verification_due_at = datetime('now', '+90 days'), updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-			).bind(locationId));
+			).bind(confirmedFields.join(','), source.final_url, locationId));
 		}
 		await env.DB.batch(statements);
 		return { status: jobStatus, confirmed_fields: confirmedFields };
@@ -1061,7 +1167,7 @@ async function performVerification(env: Env, locationId: number, jobId: number):
 	}
 }
 
-async function queueLocationVerification(env: Env, locationId: number): Promise<{ job_id: number; workflow_id: string }> {
+export async function queueLocationVerification(env: Env, locationId: number): Promise<{ job_id: number; workflow_id: string }> {
 	if (!env.VERIFY_WORKFLOW) throw new Error('Verification Workflow is not configured.');
 	const target = await env.DB.prepare(
 		`SELECT id, COALESCE(NULLIF(verification_source_url, ''), NULLIF(source_url, ''), contact_web) AS source_url
@@ -1072,7 +1178,9 @@ async function queueLocationVerification(env: Env, locationId: number): Promise<
 	if (existing) return { job_id: existing.id, workflow_id: '' };
 	const insert = await env.DB.prepare("INSERT INTO verification_jobs (location_id, source_url) VALUES (?, ?)").bind(locationId, target.source_url).run();
 	const jobId = Number(insert.meta.last_row_id);
-	const instance = await env.VERIFY_WORKFLOW.create({ id: `location-${locationId}-job-${jobId}`, params: { location_id: locationId, job_id: jobId } });
+	let instance;
+	try { instance = await env.VERIFY_WORKFLOW.create({ id: `location-${locationId}-job-${jobId}`, params: { location_id: locationId, job_id: jobId } }); }
+	catch (error) { await env.DB.prepare("UPDATE verification_jobs SET status='failed', error_message='Workflow creation failed', completed_at=CURRENT_TIMESTAMP WHERE id=?").bind(jobId).run(); throw error; }
 	await env.DB.prepare('UPDATE verification_jobs SET workflow_instance_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').bind(instance.id, jobId).run();
 	return { job_id: jobId, workflow_id: instance.id };
 }
@@ -1083,9 +1191,9 @@ async function queueDueVerifications(env: Env): Promise<void> {
 		`SELECT l.id FROM locations l
 		 WHERE l.status = 'active'
 		 AND COALESCE(NULLIF(l.verification_source_url, ''), NULLIF(l.source_url, ''), l.contact_web) IS NOT NULL
-		 AND (l.verification_due_at IS NULL OR l.verification_due_at <= CURRENT_TIMESTAMP OR l.verification_status = 'needs_review')
-		 AND NOT EXISTS (SELECT 1 FROM verification_jobs j WHERE j.location_id = l.id AND j.status IN ('queued', 'running'))
-		 ORDER BY COALESCE(l.verification_due_at, '1970-01-01'), l.id LIMIT 5`,
+		 AND (l.verification_due_at IS NULL OR l.verification_due_at <= CURRENT_TIMESTAMP )
+		 AND NOT EXISTS (SELECT 1 FROM verification_jobs j WHERE j.location_id = l.id AND (j.status IN ('queued', 'running') OR j.created_at > datetime('now','-1 day')))
+		 ORDER BY COALESCE(l.verification_due_at, '1970-01-01'), l.id LIMIT 1000`,
 	).all<{ id: number }>();
 	for (const location of due.results) {
 		try {
@@ -1130,7 +1238,7 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext): Pro
 		if (method === 'GET' && url.pathname === '/api/admin/suggestions') return adminList(env, 'suggestions');
 		if (method === 'GET' && url.pathname === '/api/admin/reports') return adminList(env, 'reports');
 		if (method === 'GET' && url.pathname === '/api/admin/locations') return adminList(env, 'locations');
-		if (method === 'GET' && url.pathname === '/api/admin/verification-jobs') return adminList(env, 'verification-jobs');
+		if (method === 'GET' && url.pathname === '/api/admin/verification-jobs') return verificationQueue(request, env);
 
 		const suggestionMatch = url.pathname.match(/^\/api\/admin\/suggestions\/(\d+)\/(approve|reject)$/);
 		if (method === 'POST' && suggestionMatch) {
@@ -1139,6 +1247,10 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext): Pro
 		const reportMatch = url.pathname.match(/^\/api\/admin\/reports\/(\d+)\/resolve$/);
 		if (method === 'POST' && reportMatch) return resolveReport(request, env, Number(reportMatch[1]));
 		const locationMatch = url.pathname.match(/^\/api\/admin\/locations\/(\d+)$/);
+		if (method === 'GET' && locationMatch) {
+			const location = await env.DB.prepare('SELECT * FROM locations WHERE id=?').bind(Number(locationMatch[1])).first();
+			return location ? json({ location }) : json({ error: 'Location not found.' },404);
+		}
 		if (method === 'PUT' && locationMatch) return updateLocation(request, env, Number(locationMatch[1]));
 		const verificationMatch = url.pathname.match(/^\/api\/admin\/locations\/(\d+)\/verify$/);
 		if (method === 'POST' && verificationMatch) {
@@ -1180,10 +1292,10 @@ export default {
 		} catch (error) {
 			console.error(error);
 			const message = error instanceof Error ? error.message : 'Unexpected server error.';
-			return json({ error: message }, 500);
+			return json({ error: error instanceof RequestError ? message : 'Unexpected server error.' }, error instanceof RequestError ? error.status : 500);
 		}
 	},
 	async scheduled(_controller, env, ctx): Promise<void> {
-		ctx.waitUntil(Promise.all([geocodeMissing(env), queueDueVerifications(env)]).then(() => undefined));
+		ctx.waitUntil((_controller.cron === '15 3 * * 1,4' ? queueDueVerifications(env) : geocodeMissing(env)));
 	},
 } satisfies ExportedHandler<Env>;
