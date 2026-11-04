@@ -14,6 +14,7 @@ export interface Env {
 	ASSETS: Fetcher;
 	ADMIN_TOKEN?: string;
 	MAP_PUBLISH_GITHUB_TOKEN?: string;
+	START_MAP_PUBLISH_7314_FNA106_11042026?: string;
 	SUBMISSION_SALT?: string;
 	TURNSTILE_SITE_KEY?: string;
 	TURNSTILE_SECRET?: string;
@@ -1223,7 +1224,8 @@ async function publishPublicMap(request: Request, env: Env): Promise<Response> {
 	if (request.headers.get('origin') !== new URL(request.url).origin) {
 		return json({ error: 'Open the admin dashboard to publish the map.' }, 403);
 	}
-	if (!env.MAP_PUBLISH_GITHUB_TOKEN) {
+	const token = env.START_MAP_PUBLISH_7314_FNA106_11042026 || env.MAP_PUBLISH_GITHUB_TOKEN;
+	if (!token) {
 		return json({ error: 'Map publishing has not been configured.' }, 503);
 	}
 
@@ -1231,7 +1233,7 @@ async function publishPublicMap(request: Request, env: Env): Promise<Response> {
 		method: 'POST',
 		headers: {
 			accept: 'application/vnd.github+json',
-			authorization: 'Bearer ' + env.MAP_PUBLISH_GITHUB_TOKEN,
+			authorization: 'Bearer ' + token,
 			'content-type': 'application/json',
 			'user-agent': 'free-food-map',
 			'x-github-api-version': '2026-03-10',

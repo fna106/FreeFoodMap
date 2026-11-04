@@ -35,7 +35,7 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.DEPLOY_MAP_TO_CLOUDFLARE_5826_FNA106_11042026 || secrets.CLOUDFLARE_API_TOKEN }}
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v4
@@ -57,7 +57,7 @@ jobs:
         if: ${{ env.CLOUDFLARE_API_TOKEN != '' }}
         uses: cloudflare/wrangler-action@v4
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          apiToken: ${{ secrets.DEPLOY_MAP_TO_CLOUDFLARE_5826_FNA106_11042026 || secrets.CLOUDFLARE_API_TOKEN }}
           workingDirectory: app
           preCommands: |
             wrangler d1 migrations apply free-food-map-db --remote
