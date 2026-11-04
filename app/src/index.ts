@@ -13,7 +13,7 @@ export interface Env {
 	DB: D1Database;
 	ASSETS: Fetcher;
 	ADMIN_TOKEN?: string;
-	MAP_PUBLISH_GITHUB_TOKEN?: string;
+
 	START_MAP_PUBLISH_7314_FNA106_11042026?: string;
 	SUBMISSION_SALT?: string;
 	TURNSTILE_SITE_KEY?: string;
@@ -1224,7 +1224,7 @@ async function publishPublicMap(request: Request, env: Env): Promise<Response> {
 	if (request.headers.get('origin') !== new URL(request.url).origin) {
 		return json({ error: 'Open the admin dashboard to publish the map.' }, 403);
 	}
-	const token = env.START_MAP_PUBLISH_7314_FNA106_11042026 || env.MAP_PUBLISH_GITHUB_TOKEN;
+	const token = env.START_MAP_PUBLISH_7314_FNA106_11042026;
 	if (!token) {
 		return json({ error: 'Map publishing has not been configured.' }, 503);
 	}

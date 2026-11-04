@@ -118,7 +118,7 @@ When the two Turnstile values are absent, community forms continue to use the ho
 
 The GitHub Actions workflow runs tests, applies unapplied D1 migrations, and deploys every change to main. Add this repository secret once:
 
-- CLOUDFLARE_API_TOKEN
+- DEPLOY_MAP_TO_CLOUDFLARE_5826_FNA106_11042026
 
 The account ID is a non-secret value stored in `wrangler.jsonc`. The API token should be scoped to this Cloudflare account and limited to Workers and D1 edits. `ADMIN_TOKEN` and `SUBMISSION_SALT` remain encrypted Worker secrets in Cloudflare and are not replaced during routine deployments.
 
@@ -179,7 +179,7 @@ The button queues the existing GitHub deployment workflow. Once the run
 succeeds, approved listings and changes are live. The button links to the run.
 
 To enable it, merge the workflow and app changes to main. Configure the GitHub
-repository secret CLOUDFLARE_API_TOKEN with Workers deployment and D1 access.
-Set the Cloudflare Worker secret MAP_PUBLISH_GITHUB_TOKEN with a fine-grained
+repository secret DEPLOY_MAP_TO_CLOUDFLARE_5826_FNA106_11042026 with Workers deployment and D1 access.
+Set the Cloudflare Worker secret START_MAP_PUBLISH_7314_FNA106_11042026 with a fine-grained
 GitHub token scoped to fna106/FreeFoodMap with Actions write permission.
 The token belongs in Worker secrets. The browser never receives it.

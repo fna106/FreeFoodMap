@@ -35,7 +35,7 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.DEPLOY_MAP_TO_CLOUDFLARE_5826_FNA106_11042026 || secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.DEPLOY_MAP_TO_CLOUDFLARE_5826_FNA106_11042026 }}
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v4
@@ -51,13 +51,13 @@ jobs:
       - name: Require deployment credentials
         if: ${{ env.CLOUDFLARE_API_TOKEN == '' }}
         run: |
-          echo "::error::Configure the CLOUDFLARE_API_TOKEN repository secret."
+          echo "::error::Configure the DEPLOY_MAP_TO_CLOUDFLARE_5826_FNA106_11042026 repository secret."
           exit 1
       - name: Apply database migrations and deploy
         if: ${{ env.CLOUDFLARE_API_TOKEN != '' }}
         uses: cloudflare/wrangler-action@v4
         with:
-          apiToken: ${{ secrets.DEPLOY_MAP_TO_CLOUDFLARE_5826_FNA106_11042026 || secrets.CLOUDFLARE_API_TOKEN }}
+          apiToken: ${{ secrets.DEPLOY_MAP_TO_CLOUDFLARE_5826_FNA106_11042026 }}
           workingDirectory: app
           preCommands: |
             wrangler d1 migrations apply free-food-map-db --remote
