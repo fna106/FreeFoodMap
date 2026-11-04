@@ -289,7 +289,7 @@
 
 	function locationCard(location) {
 		var website = safeWebUrl(location.contact_web);
-		var directions = 'https://www.openstreetmap.org/search?query=' + encodeURIComponent(location.address + ' ' + location.zip_code);
+		var directions = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(location.address + ' ' + location.zip_code);
 		var phone = location.contact_phone ? String(location.contact_phone).replace(/[^\d+]/g, '') : '';
 		var organization = location.organization_name
 			? '<div class="result-hours"><i data-lucide="building-2" aria-hidden="true"></i><span>' + escapeHtml(location.organization_name) + '</span></div>'
@@ -340,7 +340,6 @@
 			detailsRow('Verification', verificationLabel(location)) +
 			detailsRow('Checked fields', verifiedFieldLabel(location.verified_fields)) +
 			detailsRow('Last reviewed', location.last_reviewed_at ? formatDate(location.last_reviewed_at) : '') +
-			detailsRow('Source', location.verification_source_url ? 'View verification source' : '', safeWebUrl(location.verification_source_url)) +
 			'</dl><div class="result-links">' +
 			call +
 			site +
@@ -350,7 +349,7 @@
 			'<button class="button button-secondary button-small" type="button" data-confirm-id="' + Number(location.id) + '"><i data-lucide="message-circle" aria-hidden="true"></i>Visit update</button>' +
 			'<a class="button button-secondary button-small" href="' +
 			escapeHtml(directions) +
-			'" target="_blank" rel="noopener"><i data-lucide="navigation" aria-hidden="true"></i>Directions</a>' +
+			'" rel="noopener"><i data-lucide="navigation" aria-hidden="true"></i>Directions</a>' +
 			'<button class="button button-danger button-small" type="button" data-report-id="' +
 			Number(location.id) +
 			'"><i data-lucide="flag" aria-hidden="true"></i>Report</button></div></div></details>'
@@ -364,6 +363,8 @@
 			? 'Could not locate ZIP ' + meta.origin_zip + '. Showing exact ZIP matches only; the distance filter is unavailable. Try again or use your location.'
 			: meta.radius_miles ? 'Within ' + meta.radius_miles + (meta.radius_miles === 1 ? ' mile of ' : ' miles of ') + (meta.approximate_origin ? 'the approximate center of ZIP ' + meta.origin_zip : 'your location') + '. Distances are straight-line estimates.' : '';
 		summary.hidden = !summary.textContent;
+		if (meta.snapshot_at && !meta.using_saved_data) { summary.textContent += ' Listings published ' + formatDate(meta.snapshot_at) + '.'; summary.hidden = false; }
+		if (meta.using_saved_data) { summary.textContent += ' Showing a saved public listing while live updates are temporarily unavailable. Call before visiting.'; summary.hidden = false; }
 		if (meta.unmapped_count) { summary.textContent += ' ' + meta.unmapped_count + ' listed resources have an unconfirmed map position' + (meta.origin_zip ? ' in this ZIP; their distance is unknown.' : ' and appear in the list only.'); summary.hidden = false; }
 		elements.resultCount.textContent =
 			state.locations.length === 1 ? '1 location' : state.locations.length + ' locations';
@@ -451,7 +452,7 @@
 		}
 		try {
 			state.lastLocationQuery = params.toString();
-			var data = await api('/api/locations?' + state.lastLocationQuery);
+			var data = await searchPublicLocations(state.lastLocationQuery);
 			if (requestId !== state.searchRequestId) return;
 			state.locations = data.locations || [];
 			state.searchMeta = data.meta || {};
@@ -467,11 +468,48 @@
 		}
 	}
 
+
+	var publicListings;
+	var zipCenters;
+	var snapshotSearch;
+
+	function loadPublicListings() {
+		if (!publicListings) publicListings = api('/location-snapshot.json').catch(function (error) {
+			publicListings = null;
+			throw error;
+		});
+		return publicListings;
+	}
+
+	async function searchPublicLocations(query) {
+		var params = new URLSearchParams(query);
+		var zip = (params.get('zip') || '').trim();
+		if (zip && !/^\d{5}$/.test(zip)) throw new Error('Enter a valid five-digit ZIP code.');
+		var radius = Number(params.get('radius') || 5);
+		if (!Number.isFinite(radius) || radius < 1 || radius > 100) throw new Error('Choose a distance between 1 and 100 miles.');
+		var lat = null;
+		var lon = null;
+		if (params.has('lat') && params.has('lon')) {
+			lat = Number(params.get('lat'));
+			lon = Number(params.get('lon'));
+		} else if (zip) {
+			if (!zipCenters) zipCenters = api('/zip-centers.json').catch(function () {
+				zipCenters = null;
+				return {};
+			});
+			var center = (await zipCenters)[zip];
+			if (center) { lat = center[0]; lon = center[1]; }
+		}
+		if (!snapshotSearch) snapshotSearch = import('/snapshot-search.mjs');
+		var results = await Promise.all([loadPublicListings(), snapshotSearch]);
+		return results[1].searchSnapshot(results[0], params, lat, lon, radius);
+	}
+
 	async function reloadLocations() {
 		if (!state.lastLocationQuery) return;
 		var requestId = ++state.searchRequestId;
 		try {
-			var data = await api('/api/locations?' + state.lastLocationQuery);
+			var data = await searchPublicLocations(state.lastLocationQuery);
 			if (requestId !== state.searchRequestId) return;
 			state.locations = data.locations || [];
 			state.searchMeta = data.meta || {};
@@ -481,8 +519,8 @@
 
 	async function loadStats() {
 		try {
-			var data = await api('/api/stats');
-			var total = Number(data.counts && data.counts.active_locations || 0);
+			var data = await loadPublicListings();
+			var total = data.locations.length;
 			if (total) elements.introLocationCount.textContent = total.toLocaleString();
 		} catch (_error) {}
 	}
@@ -604,7 +642,7 @@
 	}
 
 	function renderSuggestions() {
-		if (!state.admin.suggestions.length) return queueEmpty('Suggestion queue is clear', 'New community submissions will appear here.');
+		if (!state.admin.suggestions.length) return queueEmpty('Suggestion queue is clear', '');
 		return (
 			'<div class="queue-list">' +
 			state.admin.suggestions
@@ -644,7 +682,7 @@
 	}
 
 	function renderReports() {
-		if (!state.admin.reports.length) return queueEmpty('Report queue is clear', 'Issue reports will appear here.');
+		if (!state.admin.reports.length) return queueEmpty('Report queue is clear', '');
 		return (
 			'<div class="queue-list">' +
 			state.admin.reports
@@ -671,7 +709,7 @@
 	}
 
 	function renderAdminLocations() {
-		if (!state.admin.locations.length) return queueEmpty('No locations yet', 'Approved suggestions will be published here.');
+		if (!state.admin.locations.length) return queueEmpty('No locations yet', '');
 		return (
 			'<div class="queue-list">' +
 			state.admin.locations
@@ -708,11 +746,22 @@
 		var counts = {};
 		state.verificationCounts.forEach(function (c) { counts[c.reason] = c.total; });
 		counts.attention = ['identity','hours','contact','other','failed'].reduce(function (sum,k) { return sum + (counts[k] || 0); },0);
+		var guidance = {
+			attention: 'Scheduled and admin-started checks that need review. Compare unmatched fields with the source before editing.',
+			identity: 'The source did not confirm the name, address, or ZIP. Confirm the site identity and street address.',
+			hours: 'The source did not confirm the hours. Check the current food distribution schedule.',
+			contact: 'The source did not confirm the phone number. Check the current public number.',
+			other: 'The check needs review for another reason. Read the evidence and confirm any outstanding details.',
+			failed: 'The check could not read the source. Try the link or find a current source, then rerun the check.',
+			mapping: 'Active listings without coordinates. Confirm the full street address and correct it if needed.',
+			running: 'Checks are queued or running. Refresh later to see the results.',
+			confirmed: 'The latest check completed successfully. Review the evidence to see what matched.'
+		};
 		var tabs = '<div class="verification-tabs" role="tablist" aria-label="Verification reasons">' + [['attention','Needs attention'],['identity','Name / address'],['hours','Hours'],['contact','Contact'],['other','Other changes'],['failed','Source unavailable'],['mapping','Map positions'],['running','In progress'],['confirmed','Completed']].map(function (entry) {
 			return '<button type="button" role="tab" class="button button-secondary button-small" aria-selected="' + (state.verificationCategory === entry[0]) + '" data-verification-category="' + entry[0] + '">' + entry[1] + ' (' + (counts[entry[0]] || 0) + ')</button>';
-		}).join('') + '</div><p>One latest check per location. Earlier checks remain in the audit history. A location with multiple issues appears under its first unresolved reason.</p>';
+		}).join('') + '</div><p>' + escapeHtml(guidance[state.verificationCategory]) + '</p>';
 		var navigation = '<div class="toolbar-actions"><button class="button button-secondary" data-verification-page="' + (state.verificationPage-1) + '" ' + (state.verificationPage <= 1 ? 'disabled' : '') + '>Previous</button><span>Page ' + state.verificationPage + ' Â· ' + state.verificationTotal + ' locations</span><button class="button button-secondary" data-verification-page="' + (state.verificationPage+1) + '" ' + (state.verificationPage*50 >= state.verificationTotal ? 'disabled' : '') + '>Next</button></div>';
-		if (!state.admin.verificationJobs.length) return tabs + queueEmpty('Nothing to review here', 'Choose another reason to view its locations.') + navigation;
+		if (!state.admin.verificationJobs.length) return tabs + queueEmpty('Nothing to review here', '') + navigation;
 		return tabs + '<div class="queue-list">' + state.admin.verificationJobs.map(function (job) {
 			var detail = '';
 			try {
@@ -724,9 +773,9 @@
 	}
 
 	function renderAdminContent() {
-		if (state.adminTab === 'suggestions') elements.adminContent.innerHTML = renderSuggestions();
-		if (state.adminTab === 'reports') elements.adminContent.innerHTML = renderReports();
-		if (state.adminTab === 'locations') elements.adminContent.innerHTML = renderAdminLocations();
+		if (state.adminTab === 'suggestions') elements.adminContent.innerHTML = '<p>Community submissions awaiting approval. Check the source, address, and possible duplicates before publishing.</p>' + renderSuggestions();
+		if (state.adminTab === 'reports') elements.adminContent.innerHTML = '<p>Issues visitors reported on existing listings. Check the issue, update the listing if needed, then resolve the report.</p>' + renderReports();
+		if (state.adminTab === 'locations') elements.adminContent.innerHTML = '<p>Imported listings and approved suggestions. Edit listing details or start an automated source check.</p>' + renderAdminLocations();
 		if (state.adminTab === 'verification-jobs') elements.adminContent.innerHTML = renderVerificationJobs();
 		refreshIcons();
 	}
@@ -828,6 +877,11 @@
 		form.elements.mode.value = mode;
 		form.elements.id.value = record.id;
 		document.getElementById('duplicate-warning').hidden = true;
+		var source = document.getElementById('review-verification-source');
+		var sourceUrl = mode === 'location' ? safeWebUrl(record.verification_source_url) : '';
+		source.hidden = !sourceUrl;
+		source.removeAttribute('href');
+		if (sourceUrl) source.href = sourceUrl;
 		if (mode === 'suggestion') {
 			document.getElementById('review-eyebrow').textContent = 'Pending suggestion';
 			document.getElementById('review-title').textContent = 'Review and publish';
@@ -930,6 +984,25 @@
 	});
 	document.getElementById('admin-button').addEventListener('click', showAdminView);
 	document.getElementById('exit-admin').addEventListener('click', showMapView);
+	document.getElementById('publish-map').addEventListener('click', async function (event) {
+		var button = event.currentTarget;
+		var status = document.getElementById('publish-map-status');
+		var link = document.getElementById('publish-map-run');
+		button.disabled = true;
+		link.hidden = true;
+		status.textContent = 'Starting publication…';
+		try {
+			var result = await api('/api/admin/publish', { method: 'POST' }, true);
+			status.textContent = 'Publication queued. Map changes go live after the publishing run succeeds.';
+			link.href = result.run_url;
+			link.hidden = false;
+		} catch (error) {
+			status.textContent = error.message;
+		} finally {
+			button.disabled = false;
+		}
+	});
+
 	document.getElementById('refresh-admin').addEventListener('click', loadAdmin);
 
 	document.querySelectorAll('[data-admin-tab]').forEach(function (button) {
@@ -1149,7 +1222,8 @@
 
 	async function initialize() {
 		refreshIcons();
-		await Promise.all([loadMeta(), loadStats()]);
+		void loadMeta();
+		void loadStats();
 		if ('serviceWorker' in navigator) {
 			navigator.serviceWorker
 				.register('/sw.js')

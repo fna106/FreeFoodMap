@@ -1,4 +1,5 @@
-import { normalizeRecord } from './hours.js';
+import { easternClock, haversineMiles, normalized, searchSnapshot } from '../public/snapshot-search.mjs';
+import { normalizeRecord } from '../public/hours.mjs';
 import puppeteer from '@cloudflare/puppeteer';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from 'cloudflare:workers';
@@ -12,6 +13,7 @@ export interface Env {
 	DB: D1Database;
 	ASSETS: Fetcher;
 	ADMIN_TOKEN?: string;
+	MAP_PUBLISH_GITHUB_TOKEN?: string;
 	SUBMISSION_SALT?: string;
 	TURNSTILE_SITE_KEY?: string;
 	TURNSTILE_SECRET?: string;
@@ -55,13 +57,6 @@ async function cachedPublicResponse(
 	ttlSeconds: number,
 	loader: () => Promise<Response>,
 ): Promise<Response> {
-	const path = new URL(request.url).pathname;
-	if ((path.startsWith('/api/') && path !== '/api/meta') || path.startsWith('/locations/')) {
-		const response = await loader();
-		const headers = new Headers(response.headers);
-		headers.set('cache-control', 'no-store');
-		return new Response(response.body, { status: response.status, headers });
-	}
 	const cache = caches.default;
 	const cacheKey = new Request(request.url, { method: 'GET', headers: { accept: request.headers.get('accept') || '*/*' } });
 	const cached = await cache.match(cacheKey);
@@ -117,10 +112,6 @@ export function isValidUrl(value: string): boolean {
 	}
 }
 
-function normalized(value: string): string {
-	return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-}
-
 function ftsQuery(value: string): string {
 	return normalized(value)
 		.split(/\s+/)
@@ -134,31 +125,6 @@ function finiteNumber(value: string | null, minimum: number, maximum: number): n
 	if (value == null || value.trim() === '') return null;
 	const number = Number(value);
 	return Number.isFinite(number) && number >= minimum && number <= maximum ? number : null;
-}
-
-function haversineMiles(latitudeA: number, longitudeA: number, latitudeB: number, longitudeB: number): number {
-	const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
-	const latitudeDelta = toRadians(latitudeB - latitudeA);
-	const longitudeDelta = toRadians(longitudeB - longitudeA);
-	const a =
-		Math.sin(latitudeDelta / 2) ** 2 +
-		Math.cos(toRadians(latitudeA)) * Math.cos(toRadians(latitudeB)) * Math.sin(longitudeDelta / 2) ** 2;
-	return 3958.7613 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-function easternClock(date = new Date()): { day: number; time: string; previousDay: number } {
-	const parts = new Intl.DateTimeFormat('en-US', {
-		timeZone: 'America/New_York',
-		weekday: 'short',
-		hour: '2-digit',
-		minute: '2-digit',
-		hourCycle: 'h23',
-	}).formatToParts(date);
-	const weekday = parts.find((part) => part.type === 'weekday')?.value || 'Sun';
-	const hour = parts.find((part) => part.type === 'hour')?.value || '00';
-	const minute = parts.find((part) => part.type === 'minute')?.value || '00';
-	const day = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(weekday);
-	return { day, previousDay: (day + 6) % 7, time: `${hour}:${minute}` };
 }
 
 function slugify(value: string): string {
@@ -318,7 +284,40 @@ async function resolveZipCenter(zip: string): Promise<{ latitude: number; longit
 	}
 }
 
+let databaseSearchRetryAt = 0;
+
 export async function listLocations(request: Request, env: Env): Promise<Response> {
+	try {
+		if (Date.now() < databaseSearchRetryAt) return await snapshotLocations(request,env);
+		return await queryLiveLocations(request,env);
+	} catch (error) {
+		console.error('Live location search unavailable',error);
+		if (/daily.*limit|exceeded.*D1|D1.*exceeded/i.test(String(error))) databaseSearchRetryAt = Date.now()+60000;
+		return snapshotLocations(request,env);
+	}
+}
+
+export async function snapshotLocations(request: Request, env: Env): Promise<Response> {
+	const p=new URL(request.url).searchParams;
+	const zip=clean(p.get('zip'),120);
+	const service=clean(p.get('service'),60);
+	const radius=finiteNumber(p.get('radius'),1,100) ?? 5;
+	if (zip && !isValidZip(zip)) return json({error:'Enter a valid five-digit ZIP code.'},400);
+	if (p.has('radius') && finiteNumber(p.get('radius'),1,100)==null) return json({error:'Choose a distance between 1 and 100 miles.'},400);
+	if(service && !SERVICE_TYPES.includes(service as (typeof SERVICE_TYPES)[number])) return json({error:'Choose a valid service type.'},400);
+	const requestedNearby=p.has('lat') || p.has('lon');
+	let lat=finiteNumber(p.get('lat'),-90,90), lon=finiteNumber(p.get('lon'),-180,180);
+	if(requestedNearby && (lat==null || lon==null)) return json({error:'Valid latitude and longitude are required for nearby search.'},400);
+	if(!zip && !requestedNearby && p.get('all')!=='true') return json({error:'Enter a ZIP code, use your location, or choose Show all locations.'},400);
+	if(zip && !requestedNearby) { const center=await resolveZipCenter(zip); if(center) {lat=center.latitude;lon=center.longitude;} }
+	const response=await env.ASSETS.fetch(new Request(new URL('/location-snapshot.json',request.url)));
+	if(!response.ok) return json({error:'Location search is temporarily unavailable. Please try again shortly.'},503);
+	const data=await response.json<{locations:Array<Record<string,unknown>>;snapshot_at:string}>();
+	const result = searchSnapshot(data, p, lat, lon, radius);
+	return json({...result, service_types: SERVICE_TYPES, meta: {...result.meta, using_saved_data: true}});
+}
+
+async function queryLiveLocations(request: Request, env: Env): Promise<Response> {
 	const url = new URL(request.url);
 	const zip = clean(url.searchParams.get('zip'), 120);
 	const service = clean(url.searchParams.get('service'), 60);
@@ -394,7 +393,7 @@ export async function listLocations(request: Request, env: Env): Promise<Respons
 	const sql = `SELECT l.id, l.name, l.address, l.zip_code, l.service_type, l.organization_name, l.hours,
 		l.contact_phone, l.contact_email, l.contact_web, l.notes, l.latitude, l.longitude,
 		l.eligibility, l.accessibility, l.languages, l.appointment_required, l.schedule_timezone,
-		l.verification_status, l.verified_fields, l.verification_source_url, l.verification_notes,
+		l.verification_status, l.verified_fields,
 		l.last_verified_at, l.last_reviewed_at, l.verification_due_at, l.updated_at,
 		${openExpression} AS is_open_now,
 		EXISTS (SELECT 1 FROM location_operating_hours oh WHERE oh.location_id = l.id) AS has_structured_hours,
@@ -455,7 +454,8 @@ type PublicLocation = Record<string, unknown> & {
 };
 
 async function getPublicLocation(env: Env, id: number): Promise<PublicLocation | null> {
-	return env.DB.prepare(
+	try {
+	return await env.DB.prepare(
 		`SELECT l.*,
 			(SELECT signal FROM location_confirmations c
 			 WHERE c.location_id = l.id AND c.submitted_at >= datetime('now', '-24 hours')
@@ -467,6 +467,13 @@ async function getPublicLocation(env: Env, id: number): Promise<PublicLocation |
 	)
 		.bind(id)
 		.first<PublicLocation>();
+	} catch (error) {
+		console.error('Live detail unavailable',error);
+		const response=await env.ASSETS.fetch(new Request('https://freefoodmap.org/location-snapshot.json'));
+		if(!response.ok) throw error;
+		const data=await response.json<{locations:PublicLocation[]}>();
+		return data.locations.find(l=>l.id===id)||null;
+	}
 }
 
 function publicLocationUrl(location: PublicLocation): string {
@@ -492,7 +499,7 @@ async function renderLocationPage(env: Env, id: number, requestedSlug: string): 
 	if (requestedSlug !== slug) return Response.redirect(canonical, 308);
 	const phoneHref = String(location.contact_phone || '').replace(/[^\d+]/g, '');
 	const website = isValidUrl(String(location.contact_web || '')) ? String(location.contact_web || '') : '';
-	const directions = `https://www.openstreetmap.org/search?query=${encodeURIComponent(`${location.address} ${location.zip_code}`)}`;
+	const directions = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${location.address} ${location.zip_code}`)}`;
 	const verifiedDate = location.last_verified_at || location.last_reviewed_at;
 	const description = `${location.service_type} at ${location.address} ${location.zip_code}. ${String(location.hours || 'Call for current hours.')}`;
 	const schema = {
@@ -530,7 +537,7 @@ async function renderLocationPage(env: Env, id: number, requestedSlug: string): 
 <main class="location-detail"><p class="eyebrow">${escapeHtml(location.service_type)}</p><h1>${escapeHtml(location.name)}</h1>
 ${location.organization_name ? `<p class="location-organization">${escapeHtml(location.organization_name)}</p>` : ''}
 <address>${escapeHtml(location.address)} ${escapeHtml(location.zip_code)}</address><div class="location-actions">${actions}</div>
-<dl class="location-facts">${detail('Appointment', location.appointment_required ? 'Required — contact this location before visiting.' : '')}${detail('Hours', location.hours)}${detail('Eligibility', location.eligibility)}${detail('Accessibility', location.accessibility)}${detail('Languages', location.languages)}${detail('Phone', location.contact_phone)}${detail('Email', location.contact_email)}${detail('Notes', location.notes)}${detail('Last reviewed', verifiedDate ? String(verifiedDate).slice(0, 10) : 'Not yet verified')}</dl>
+<dl class="location-facts">${detail('Appointment', location.appointment_required ? 'Required â€” contact this location before visiting.' : '')}${detail('Hours', location.hours)}${detail('Eligibility', location.eligibility)}${detail('Accessibility', location.accessibility)}${detail('Languages', location.languages)}${detail('Phone', location.contact_phone)}${detail('Email', location.contact_email)}${detail('Notes', location.notes)}${detail('Last reviewed', verifiedDate ? String(verifiedDate).slice(0, 10) : 'Not yet verified')}</dl>
 <p class="location-caution">Hours and availability can change. Call before visiting.</p>
 <a href="/?zip=${escapeHtml(location.zip_code)}#map">See other resources in ${escapeHtml(location.zip_code)}</a></main></body></html>`;
 	return htmlResponse(markup, 200, { 'cache-control': 'public, max-age=3600, stale-while-revalidate=86400' });
@@ -1212,6 +1219,38 @@ export class LocationVerificationWorkflow extends WorkflowEntrypoint<Env, Verifi
 	}
 }
 
+async function publishPublicMap(request: Request, env: Env): Promise<Response> {
+	if (request.headers.get('origin') !== new URL(request.url).origin) {
+		return json({ error: 'Open the admin dashboard to publish the map.' }, 403);
+	}
+	if (!env.MAP_PUBLISH_GITHUB_TOKEN) {
+		return json({ error: 'Map publishing has not been configured.' }, 503);
+	}
+
+	const response = await fetch('https://api.github.com/repos/fna106/FreeFoodMap/actions/workflows/deploy-cloudflare.yml/dispatches', {
+		method: 'POST',
+		headers: {
+			accept: 'application/vnd.github+json',
+			authorization: 'Bearer ' + env.MAP_PUBLISH_GITHUB_TOKEN,
+			'content-type': 'application/json',
+			'user-agent': 'free-food-map',
+			'x-github-api-version': '2026-03-10',
+		},
+		body: JSON.stringify({ ref: 'main', return_run_details: true }),
+		signal: AbortSignal.timeout(10000),
+	}).catch(() => null);
+
+	if (!response?.ok) {
+		console.error('Map publish dispatch failed', response?.status);
+		return json({ error: 'Could not confirm that publishing started. Check GitHub Actions before retrying.' }, 502);
+	}
+	const run = await response.json<{ workflow_run_id?: number }>().catch(() => null);
+	const runsUrl = 'https://github.com/fna106/FreeFoodMap/actions';
+	return json({
+		run_url: Number.isSafeInteger(run?.workflow_run_id) ? runsUrl + '/runs/' + run?.workflow_run_id : runsUrl + '/workflows/deploy-cloudflare.yml',
+	}, 202);
+}
+
 async function handleApi(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
 	const url = new URL(request.url);
 	const method = request.method.toUpperCase();
@@ -1225,7 +1264,7 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext): Pro
 		})));
 	}
 	if (method === 'GET' && url.pathname === '/api/stats') return cachedPublicResponse(request, ctx, 3600, () => publicStats(env));
-	if (method === 'GET' && url.pathname === '/api/locations') return cachedPublicResponse(request, ctx, 300, () => listLocations(request, env));
+	if (method === 'GET' && url.pathname === '/api/locations') return cachedPublicResponse(request, ctx, 60, () => listLocations(request, env));
 	if (method === 'GET' && url.pathname === '/api/open-data/hsds') return cachedPublicResponse(request, ctx, 86_400, () => exportHsds(env));
 	if (method === 'POST' && url.pathname === '/api/suggestions') return submitSuggestion(request, env, ctx);
 	if (method === 'POST' && url.pathname === '/api/reports') return submitReport(request, env);
@@ -1234,6 +1273,7 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext): Pro
 
 	if (url.pathname.startsWith('/api/admin/')) {
 		if (!(await isAdmin(request, env))) return json({ error: 'Admin access required.' }, 401);
+		if (method === 'POST' && url.pathname === '/api/admin/publish') return publishPublicMap(request, env);
 		if (method === 'GET' && url.pathname === '/api/admin/overview') return adminOverview(env);
 		if (method === 'GET' && url.pathname === '/api/admin/suggestions') return adminList(env, 'suggestions');
 		if (method === 'GET' && url.pathname === '/api/admin/reports') return adminList(env, 'reports');
@@ -1292,6 +1332,7 @@ export default {
 		} catch (error) {
 			console.error(error);
 			const message = error instanceof Error ? error.message : 'Unexpected server error.';
+			if (/D1.*(exceeded|limit)|daily.*row.*limit/i.test(message)) return json({error:'Live updates are temporarily unavailable. Please try again later; changes were not saved.'},503,{'retry-after':'3600'});
 			return json({ error: error instanceof RequestError ? message : 'Unexpected server error.' }, error instanceof RequestError ? error.status : 500);
 		}
 	},

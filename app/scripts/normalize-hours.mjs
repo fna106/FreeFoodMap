@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync, readdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
-import { normalizeRecord } from '../src/hours.js';
+import { normalizeRecord } from '../public/hours.mjs';
 
 const root = resolve(import.meta.dirname, '..');
 const runner = process.env.npm_execpath ? process.execPath : (process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm');

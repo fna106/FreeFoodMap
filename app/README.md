@@ -146,3 +146,40 @@ Discovery now excludes all existing locations and suggestion history, checks dup
 Mutable search, stats, detail, and export responses use fresh server data. Offline searches still use the service worker's last successful response; metadata is precached with the app shell.
 
 The legacy Flask reference now requires `APP_SECRET_KEY`, Flask-WTF, and POST requests with CSRF tokens for mutations. Before running it against an existing PostgreSQL installation, review and apply `../legacy-security-migration.sql` to support modern password hashes. Existing SHA-1 passwords are upgraded on successful login. PostgreSQL migration execution is separate from D1 deployment.
+
+## Publishing public map data
+
+The map downloads a public snapshot and searches it in the browser. Refresh the
+snapshot before an announcement and after publishing a closure, move, or hours
+change. From the app directory, run:
+
+```sh
+node scripts/export-public-listings.mjs --remote
+pnpm run deploy
+```
+
+Use a staging checkout and `--local` to verify the export against a local D1
+database. The export selects public fields from active listings and replaces
+the snapshot only after a successful, nonempty export. The live snapshot changes
+with deployment. Review the export count before deploying.
+
+Approximate U.S. ZIP centers are from [GeoNames postal code data](https://download.geonames.org/export/zip/),
+licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+ZIP codes missing from the dataset use exact ZIP matching.
+
+During launch week, check D1 Row Metrics before running bulk verification.
+Use a representative local database for verification-history diagnostics.
+Run EXPLAIN QUERY PLAN locally and measure rows_read on a small production
+sample before running a new query across the full history. If usage rises
+unexpectedly, defer bulk diagnostics and discretionary verification.
+
+### Admin Publish map button
+
+The button queues the existing GitHub deployment workflow. Once the run
+succeeds, approved listings and changes are live. The button links to the run.
+
+To enable it, merge the workflow and app changes to main. Configure the GitHub
+repository secret CLOUDFLARE_API_TOKEN with Workers deployment and D1 access.
+Set the Cloudflare Worker secret MAP_PUBLISH_GITHUB_TOKEN with a fine-grained
+GitHub token scoped to fna106/FreeFoodMap with Actions write permission.
+The token belongs in Worker secrets. The browser never receives it.

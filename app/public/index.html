@@ -139,10 +139,12 @@
 				</div>
 				<div class="toolbar-actions">
 					<button class="button button-secondary" id="refresh-admin" type="button"><i data-lucide="refresh-cw" aria-hidden="true"></i>Refresh</button>
+					<button class="button button-primary" id="publish-map" type="button">Publish map</button>
 					<button class="button button-quiet" id="exit-admin" type="button"><i data-lucide="map" aria-hidden="true"></i>Back to map</button>
 				</div>
 			</div>
 
+			<div role="status"><span id="publish-map-status"></span> <a id="publish-map-run" target="_blank" rel="noopener" hidden>View publishing run</a></div>
 			<section id="admin-metrics" class="metrics" aria-label="Queue summary"></section>
 			<div class="admin-tabs" role="tablist" aria-label="Admin views">
 				<button class="admin-tab active" type="button" data-admin-tab="suggestions" role="tab" aria-selected="true">Suggestions <span id="suggestion-count"></span></button>
@@ -236,6 +238,7 @@
 					<label><span>Languages</span><input name="languages" maxlength="300" /></label>
 					<label><span>Schedule time zone</span><input name="schedule_timezone" maxlength="80" value="America/New_York" /></label>
 					<label><span>Source</span><input name="source_url" type="url" maxlength="500" /></label>
+					<a id="review-verification-source" target="_blank" rel="noopener" hidden>View verification source</a>
 					<label><span>Status</span><select name="status"><option value="active">Active</option><option value="inactive">Inactive</option></select></label>
 					<label><span>Latitude</span><input name="latitude" inputmode="decimal" /></label>
 					<label><span>Longitude</span><input name="longitude" inputmode="decimal" /></label>
@@ -275,6 +278,6 @@
 		<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 		<script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.js" defer></script>
-		<script src="/app.js?v=14" defer></script>
+		<script src="/app.js?v=18" defer></script>
 	</body>
 </html>

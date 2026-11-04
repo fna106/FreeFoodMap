@@ -57,7 +57,7 @@ describe('Free Food Map API', () => {
 		expect(html).toContain('data-mobile-view-target="list"');
 		expect(html).toContain('data-mobile-view-target="map"');
 		expect(html).toContain('/app.css?v=12');
-		expect(html).toContain('/app.js?v=14');
+		expect(html).toContain('/app.js?v=15');
 		expect(html).toContain('id="show-all-locations"');
 		expect(html).toContain('Search by ZIP code');
 		expect(html).not.toContain('<script src="/leaflet.js"');
@@ -90,7 +90,8 @@ describe('Free Food Map API', () => {
 		const script = await response.text();
 		expect(script).toContain('Partially checked');
 		expect(script).toContain('Checked fields');
-		expect(script).toContain('View verification source');
+		expect(script).not.toContain('View verification source');
+		expect(script).toContain('https://www.google.com/maps/dir/?api=1&destination=');
 		expect(script).toContain('verification-summary');
 	});
 

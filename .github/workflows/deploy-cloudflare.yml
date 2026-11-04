@@ -48,14 +48,18 @@ jobs:
           cache-dependency-path: app/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
         working-directory: app
-      - name: Report unconfigured deployment
+      - name: Require deployment credentials
         if: ${{ env.CLOUDFLARE_API_TOKEN == '' }}
-        run: echo "::notice::Tests passed. Add the documented CLOUDFLARE_API_TOKEN repository secret to enable automatic deployment."
+        run: |
+          echo "::error::Configure the CLOUDFLARE_API_TOKEN repository secret."
+          exit 1
       - name: Apply database migrations and deploy
         if: ${{ env.CLOUDFLARE_API_TOKEN != '' }}
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           workingDirectory: app
-          preCommands: wrangler d1 migrations apply free-food-map-db --remote
+          preCommands: |
+            wrangler d1 migrations apply free-food-map-db --remote
+            node scripts/export-public-listings.mjs --remote
           command: deploy

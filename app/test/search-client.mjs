@@ -1,9 +1,10 @@
+import * as snapshotSearch from '../public/snapshot-search.mjs';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-function client() {
+function client(useStaticData = false) {
 	let fields = { zip: '', radius: '5' };
 	const requests = [];
 	const nodes = new Map();
@@ -12,7 +13,7 @@ function client() {
 		return nodes.get(id);
 	};
 	const sandbox = vm.createContext({
-		console, URL, URLSearchParams, Map, Intl, Date,
+		staticSearchModule: snapshotSearch, console, URL, URLSearchParams, Map, Intl, Date,
 		sessionStorage: { getItem: () => '' },
 		document: { getElementById: node, querySelectorAll: () => [], addEventListener() {} },
 		window: { addEventListener() {}, location: { hash: '' } },
@@ -23,7 +24,10 @@ function client() {
 		},
 	});
 	const source = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
-	vm.runInContext(source.replace('\tinitialize();', 'globalThis.testClient = { loadLocations, state };'), sandbox);
+	const browserSource = useStaticData
+		? source.replace("import('/snapshot-search.mjs')", 'Promise.resolve(staticSearchModule)')
+		: source.replaceAll('searchPublicLocations(state.lastLocationQuery)', "api('/api/locations?' + state.lastLocationQuery)");
+	vm.runInContext(browserSource.replace('\tinitialize();', 'globalThis.testClient = { loadLocations, state };'), sandbox);
 	return { api: sandbox.testClient, requests, node, setFetch: fn => { sandbox.fetch = fn; }, fields: value => { fields = value; } };
 }
 
@@ -74,4 +78,23 @@ test('a slow earlier search cannot replace the newest results', async () => {
 	pending[0](new Response(JSON.stringify({ locations: [], meta: { origin_zip: '16803' } })));
 	await old;
 	assert.equal(app.api.state.searchMeta.origin_zip, '19104');
+});
+
+test('ZIP and device searches use only static assets when all APIs are unavailable', async () => {
+	const app = client(true);
+	const assets = [];
+	app.setFetch(async path => {
+		assert.ok(['/location-snapshot.json', '/zip-centers.json'].includes(path));
+		assets.push(path);
+		return new Response(readFileSync(new URL('../public' + path, import.meta.url)));
+	});
+	app.fields({ zip: '19104', radius: '5' });
+	await app.api.loadLocations();
+	assert.ok(app.api.state.locations.length > 0, app.node('results').innerHTML);
+	assert.equal(app.api.state.searchMeta.approximate_origin, true);
+	app.fields({ radius: '5', service: 'Food Pantry' });
+	await app.api.loadLocations({ latitude: 39.96, longitude: -75.19 });
+	assert.ok(app.api.state.locations.length > 0, app.node('results').innerHTML);
+	assert.ok(app.api.state.locations.every(location => location.service_type === 'Food Pantry'));
+	assert.deepEqual(assets.sort(), ['/location-snapshot.json', '/zip-centers.json']);
 });

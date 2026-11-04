@@ -9,7 +9,7 @@
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
-    "run_worker_first": true
+    "run_worker_first": ["/api/*", "/locations/*", "/robots.txt", "/sitemap.xml"]
   },
   "d1_databases": [
     {
