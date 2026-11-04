@@ -56,7 +56,7 @@ describe('Free Food Map API', () => {
 		expect(html).toContain('id="public-view" class="map-workspace" hidden');
 		expect(html).toContain('data-mobile-view-target="list"');
 		expect(html).toContain('data-mobile-view-target="map"');
-		expect(html).toContain('/app.css?v=12');
+		expect(html).toMatch(/\/app\.css\?v=\d+/);
 		expect(html).toMatch(/\/app\.js\?v=\d+/);
 		expect(html).toContain('id="show-all-locations"');
 		expect(html).toContain('Search by ZIP code');

@@ -10,7 +10,7 @@
 		<title>Free Food Map</title>
 		<link rel="manifest" href="/manifest.webmanifest" />
 		<link rel="icon" href="/icon-192.png" />
-		<link rel="stylesheet" href="/app.css?v=12" />
+		<link rel="stylesheet" href="/app.css?v=13" />
 	</head>
 	<body>
 		<a class="skip-link" href="#search-form">Skip to search</a>
@@ -20,7 +20,7 @@
 				<span><strong>Free Food Map</strong><small>Community initiative</small></span>
 			</a>
 			<nav class="header-actions" aria-label="Primary navigation">
-				<button class="button button-quiet" id="map-button" type="button">
+				<button class="button button-quiet" id="map-button" type="button" hidden>
 					<i data-lucide="map" aria-hidden="true"></i><span>Map</span>
 				</button>
 				<button class="button button-quiet" id="suggest-button" type="button">
@@ -36,11 +36,11 @@
 			<section class="intro-hero" aria-labelledby="intro-title">
 				<div class="intro-hero-media" role="img" aria-label="A community volunteer handing fresh food to a neighbor"></div>
 				<div class="intro-hero-inner">
-					<p class="intro-kicker">Community-powered food access</p>
+					<p class="intro-kicker">A community resource</p>
 					<h1 id="intro-title">Free Food Map</h1>
-					<p class="intro-lede">Find free meals, food pantries, and grocery support in one practical, community-maintained map.</p>
+					<p class="intro-lede">Find free meals, food pantries, and grocery support near you.</p>
 					<button class="button intro-primary-action" id="open-map-button" type="button">
-						Open the map <i data-lucide="arrow-right" aria-hidden="true"></i>
+						Find food near me <i data-lucide="arrow-right" aria-hidden="true"></i>
 					</button>
 					<p class="intro-trust"><i data-lucide="shield-check" aria-hidden="true"></i> Community suggestions are reviewed before they are published.</p>
 				</div>
@@ -57,15 +57,14 @@
 			<section class="intro-process" aria-labelledby="process-title">
 				<div class="intro-process-heading">
 					<p class="eyebrow">How the initiative works</p>
-					<h2 id="process-title">Local knowledge becomes useful, verified information.</h2>
-					<p>Free Food Map brings scattered food-access information into one place and gives the community a simple way to keep it current.</p>
+					<h2 id="process-title">Help keep local food information current</h2>
+					<p>Know a pantry we missed or a meal program with new hours? Share an update to help your neighbors plan their visit.</p>
 				</div>
 				<div class="intro-steps">
-					<article class="intro-step"><span>01</span><i data-lucide="search" aria-hidden="true"></i><h3>Find support</h3><p>Search by ZIP code, service, organization, or address and compare resources on the map.</p></article>
+					<article class="intro-step"><span>01</span><i data-lucide="search" aria-hidden="true"></i><h3>Find support</h3><p>Enter a ZIP code or use your location to find nearby food resources.</p></article>
 					<article class="intro-step"><span>02</span><i data-lucide="map-pin-plus" aria-hidden="true"></i><h3>Share knowledge</h3><p>Suggest a missing resource or report information that has changed.</p></article>
-					<article class="intro-step"><span>03</span><i data-lucide="clipboard-check" aria-hidden="true"></i><h3>Review and publish</h3><p>Submissions enter a review queue before approved updates appear publicly.</p></article>
+					<article class="intro-step"><span>03</span><i data-lucide="clipboard-check" aria-hidden="true"></i><h3>Updates are reviewed</h3><p>Our team reviews community submissions before they appear on the map.</p></article>
 				</div>
-				<button class="button button-primary intro-bottom-action" id="open-map-bottom-button" type="button">Start searching <i data-lucide="arrow-right" aria-hidden="true"></i></button>
 			</section>
 		</main>
 
@@ -280,6 +279,6 @@
 		<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 		<script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.js" defer></script>
-		<script src="/app.js?v=19" defer></script>
+		<script src="/app.js?v=21" defer></script>
 	</body>
 </html>

@@ -148,7 +148,7 @@ svg {
 	position: absolute;
 	inset: 0;
 	z-index: -1;
-	background: rgba(0, 30, 68, 0.22);
+	background: linear-gradient(90deg, rgba(0, 23, 50, 0.92), rgba(0, 23, 50, 0.68) 42%, rgba(0, 23, 50, 0.12) 80%);
 	content: '';
 }
 
@@ -254,7 +254,7 @@ svg {
 .intro-process {
 	width: min(1180px, calc(100% - 48px));
 	margin: 0 auto;
-	padding: 76px 0 88px;
+	padding: 56px 0 72px;
 }
 
 .intro-process-heading {
@@ -323,10 +323,6 @@ svg {
 	color: var(--muted);
 	font-size: 14px;
 	line-height: 1.55;
-}
-
-.intro-bottom-action {
-	margin-top: 30px;
 }
 
 .brand strong,

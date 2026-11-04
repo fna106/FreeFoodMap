@@ -754,9 +754,9 @@
 			failed: 'The check could not read the source. Try the link or find a current source, then rerun the check.',
 			mapping: 'Active listings without coordinates. Confirm the full street address and correct it if needed.',
 			running: 'Checks are queued or running. Refresh later to see the results.',
-			confirmed: 'The latest check completed successfully. Review the evidence to see what matched.'
+			confirmed: 'The agent finished checking these listings. Open the source and verify the details before marking a listing as verified. Start with any fields marked “not found”.'
 		};
-		var tabs = '<div class="verification-tabs" role="tablist" aria-label="Verification reasons">' + [['attention','Needs attention'],['identity','Name / address'],['hours','Hours'],['contact','Contact'],['other','Other changes'],['failed','Source unavailable'],['mapping','Map positions'],['running','In progress'],['confirmed','Completed']].map(function (entry) {
+		var tabs = '<div class="verification-tabs" role="tablist" aria-label="Verification reasons">' + [['attention','Needs attention'],['identity','Name / address'],['hours','Hours'],['contact','Contact'],['other','Other changes'],['failed','Source unavailable'],['mapping','Map positions'],['running','In progress'],['confirmed','Agent check complete']].map(function (entry) {
 			return '<button type="button" role="tab" class="button button-secondary button-small" aria-selected="' + (state.verificationCategory === entry[0]) + '" data-verification-category="' + entry[0] + '">' + entry[1] + ' (' + (counts[entry[0]] || 0) + ')</button>';
 		}).join('') + '</div><p>' + escapeHtml(guidance[state.verificationCategory]) + '</p>';
 		var navigation = '<div class="toolbar-actions"><button class="button button-secondary" data-verification-page="' + (state.verificationPage-1) + '" ' + (state.verificationPage <= 1 ? 'disabled' : '') + '>Previous</button><span>Page ' + state.verificationPage + ' &middot; ' + state.verificationTotal + ' locations</span><button class="button button-secondary" data-verification-page="' + (state.verificationPage+1) + '" ' + (state.verificationPage*50 >= state.verificationTotal ? 'disabled' : '') + '>Next</button></div>';
@@ -767,7 +767,7 @@
 				var evidence = JSON.parse(job.evidence_json || '{}');
 				detail = (evidence.checks || []).map(function (check) { return check.field + ': ' + (check.confirmed ? 'matched' : 'not found'); }).join(', ');
 			} catch (_error) {}
-			return '<article class="queue-item"><div class="queue-main"><div class="queue-title-row"><h2>' + escapeHtml(job.location_name) + '</h2><span class="status-tag ' + escapeHtml(job.status) + '">' + escapeHtml(job.status) + '</span></div><div class="queue-meta"><span>' + escapeHtml(job.location_address) + '</span><span>Checked ' + escapeHtml(formatDate(job.completed_at || job.started_at || job.scheduled_for)) + '</span></div><div class="queue-detail"><span>' + escapeHtml(detail || job.error_message || 'Waiting for source check') + '</span>' + (job.source_url ? '<a href="' + escapeHtml(safeWebUrl(job.source_url)) + '" target="_blank" rel="noopener">View source</a>' : '') + '</div></div><div class="item-actions"><button class="button button-secondary button-small" type="button" data-edit-location="' + Number(job.location_id) + '"><i data-lucide="pencil" aria-hidden="true"></i>Review record</button></div></article>';
+			return '<article class="queue-item"><div class="queue-main"><div class="queue-title-row"><h2>' + escapeHtml(job.location_name) + '</h2><span class="status-tag ' + escapeHtml(job.status) + '">' + escapeHtml(job.status === 'confirmed' ? 'Needs human verification' : job.status) + '</span></div><div class="queue-meta"><span>' + escapeHtml(job.location_address) + '</span><span>Checked ' + escapeHtml(formatDate(job.completed_at || job.started_at || job.scheduled_for)) + '</span></div><div class="queue-detail"><span>' + escapeHtml(detail || job.error_message || 'Waiting for source check') + '</span>' + (job.source_url ? '<a href="' + escapeHtml(safeWebUrl(job.source_url)) + '" target="_blank" rel="noopener">View source</a>' : '') + '</div></div><div class="item-actions"><button class="button button-secondary button-small" type="button" data-edit-location="' + Number(job.location_id) + '"><i data-lucide="pencil" aria-hidden="true"></i>Review record</button></div></article>';
 		}).join('') + '</div>' + navigation;
 	}
 
@@ -812,6 +812,7 @@
 	}
 
 	function showIntroView(updateHash) {
+		document.getElementById('map-button').hidden = true;
 		elements.introView.hidden = false;
 		elements.publicView.hidden = true;
 		elements.adminView.hidden = true;
@@ -841,6 +842,7 @@
 	}
 
 	async function showMapView(updateHash) {
+		document.getElementById('map-button').hidden = false;
 		elements.introView.hidden = true;
 		elements.publicView.hidden = false;
 		elements.adminView.hidden = true;
@@ -856,6 +858,7 @@
 	}
 
 	async function showAdminView(updateHash) {
+		document.getElementById('map-button').hidden = false;
 		elements.introView.hidden = true;
 		elements.publicView.hidden = true;
 		elements.adminView.hidden = false;
@@ -978,10 +981,6 @@
 		setMobileView('map');
 	});
 	document.getElementById('open-map-button').addEventListener('click', function () {
-		showMapView();
-		setMobileView('list');
-	});
-	document.getElementById('open-map-bottom-button').addEventListener('click', function () {
 		showMapView();
 		setMobileView('list');
 	});
