@@ -842,7 +842,7 @@
 	}
 
 	async function showMapView(updateHash) {
-		document.getElementById('map-button').hidden = false;
+		document.getElementById('map-button').hidden = true;
 		elements.introView.hidden = true;
 		elements.publicView.hidden = false;
 		elements.adminView.hidden = true;
