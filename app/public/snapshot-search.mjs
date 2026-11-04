@@ -58,7 +58,7 @@ export function searchSnapshot(data, p, lat, lon, radius) {
 		);
 		if (p.get('open_now') === 'true' && !open) continue;
 
-		const { verification_source_url, verification_notes, source_url, ...location } = listing;
+		const { verification_source_url, verification_notes, source_url, verified_fields, ...location } = listing;
 		const confirmationTime = Date.parse(String(location.recent_confirmation_at || '').replace(' ', 'T').replace(/(?<=\d)$/, 'Z'));
 		const recent = confirmationTime >= Date.now() - 86400000;
 		locations.push({

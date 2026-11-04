@@ -337,9 +337,6 @@
 			detailsRow('Languages', location.languages) +
 			detailsRow('Appointment', location.appointment_required ? 'Required' : '') +
 			detailsRow('Notes', location.notes) +
-			detailsRow('Verification', verificationLabel(location)) +
-			detailsRow('Checked fields', verifiedFieldLabel(location.verified_fields)) +
-			detailsRow('Last reviewed', location.last_reviewed_at ? formatDate(location.last_reviewed_at) : '') +
 			'</dl><div class="result-links">' +
 			call +
 			site +
@@ -363,9 +360,7 @@
 			? 'Could not locate ZIP ' + meta.origin_zip + '. Showing exact ZIP matches only; the distance filter is unavailable. Try again or use your location.'
 			: meta.radius_miles ? 'Within ' + meta.radius_miles + (meta.radius_miles === 1 ? ' mile of ' : ' miles of ') + (meta.approximate_origin ? 'the approximate center of ZIP ' + meta.origin_zip : 'your location') + '. Distances are straight-line estimates.' : '';
 		summary.hidden = !summary.textContent;
-		if (meta.snapshot_at && !meta.using_saved_data) { summary.textContent += ' Listings published ' + formatDate(meta.snapshot_at) + '.'; summary.hidden = false; }
 		if (meta.using_saved_data) { summary.textContent += ' Showing a saved public listing while live updates are temporarily unavailable. Call before visiting.'; summary.hidden = false; }
-		if (meta.unmapped_count) { summary.textContent += ' ' + meta.unmapped_count + ' listed resources have an unconfirmed map position' + (meta.origin_zip ? ' in this ZIP; their distance is unknown.' : ' and appear in the list only.'); summary.hidden = false; }
 		elements.resultCount.textContent =
 			state.locations.length === 1 ? '1 location' : state.locations.length + ' locations';
 		if (!state.locations.length) {
@@ -522,6 +517,10 @@
 			var data = await loadPublicListings();
 			var total = data.locations.length;
 			if (total) elements.introLocationCount.textContent = total.toLocaleString();
+			var unmapped = data.locations.filter(function (location) { return !hasCoordinates(location); }).length;
+			var published = data.snapshot_at ? 'Listings published ' + formatDate(data.snapshot_at) + '. ' : '';
+			document.getElementById('admin-listing-summary').textContent =
+				published + 'Listings without a confirmed map position: ' + unmapped + '.';
 		} catch (_error) {}
 	}
 
@@ -760,7 +759,7 @@
 		var tabs = '<div class="verification-tabs" role="tablist" aria-label="Verification reasons">' + [['attention','Needs attention'],['identity','Name / address'],['hours','Hours'],['contact','Contact'],['other','Other changes'],['failed','Source unavailable'],['mapping','Map positions'],['running','In progress'],['confirmed','Completed']].map(function (entry) {
 			return '<button type="button" role="tab" class="button button-secondary button-small" aria-selected="' + (state.verificationCategory === entry[0]) + '" data-verification-category="' + entry[0] + '">' + entry[1] + ' (' + (counts[entry[0]] || 0) + ')</button>';
 		}).join('') + '</div><p>' + escapeHtml(guidance[state.verificationCategory]) + '</p>';
-		var navigation = '<div class="toolbar-actions"><button class="button button-secondary" data-verification-page="' + (state.verificationPage-1) + '" ' + (state.verificationPage <= 1 ? 'disabled' : '') + '>Previous</button><span>Page ' + state.verificationPage + ' Â· ' + state.verificationTotal + ' locations</span><button class="button button-secondary" data-verification-page="' + (state.verificationPage+1) + '" ' + (state.verificationPage*50 >= state.verificationTotal ? 'disabled' : '') + '>Next</button></div>';
+		var navigation = '<div class="toolbar-actions"><button class="button button-secondary" data-verification-page="' + (state.verificationPage-1) + '" ' + (state.verificationPage <= 1 ? 'disabled' : '') + '>Previous</button><span>Page ' + state.verificationPage + ' &middot; ' + state.verificationTotal + ' locations</span><button class="button button-secondary" data-verification-page="' + (state.verificationPage+1) + '" ' + (state.verificationPage*50 >= state.verificationTotal ? 'disabled' : '') + '>Next</button></div>';
 		if (!state.admin.verificationJobs.length) return tabs + queueEmpty('Nothing to review here', '') + navigation;
 		return tabs + '<div class="queue-list">' + state.admin.verificationJobs.map(function (job) {
 			var detail = '';
@@ -877,6 +876,10 @@
 		form.elements.mode.value = mode;
 		form.elements.id.value = record.id;
 		document.getElementById('duplicate-warning').hidden = true;
+		var checkedFields = document.getElementById('review-checked-fields');
+		var fields = mode === 'location' ? verifiedFieldLabel(record.verified_fields) : '';
+		checkedFields.hidden = !fields;
+		checkedFields.textContent = fields ? 'Checked fields: ' + fields : '';
 		var source = document.getElementById('review-verification-source');
 		var sourceUrl = mode === 'location' ? safeWebUrl(record.verification_source_url) : '';
 		source.hidden = !sourceUrl;

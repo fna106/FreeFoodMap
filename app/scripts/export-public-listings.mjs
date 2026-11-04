@@ -10,7 +10,7 @@ if (!['--local', '--remote'].includes(scope) || process.argv.length !== 3) {
 const sql = `SELECT id, name, address, zip_code, service_type, organization_name, hours,
 	contact_phone, contact_email, contact_web, notes, latitude, longitude, eligibility,
 	accessibility, languages, appointment_required, schedule_timezone, verification_status,
-	verified_fields, last_verified_at, last_reviewed_at, verification_due_at, updated_at
+	last_verified_at, last_reviewed_at, verification_due_at, updated_at
 	FROM locations WHERE status = 'active' ORDER BY id`;
 const output = execFileSync(process.execPath, [
 	resolve(root, 'node_modules/wrangler/bin/wrangler.js'),

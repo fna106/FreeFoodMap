@@ -394,7 +394,7 @@ async function queryLiveLocations(request: Request, env: Env): Promise<Response>
 	const sql = `SELECT l.id, l.name, l.address, l.zip_code, l.service_type, l.organization_name, l.hours,
 		l.contact_phone, l.contact_email, l.contact_web, l.notes, l.latitude, l.longitude,
 		l.eligibility, l.accessibility, l.languages, l.appointment_required, l.schedule_timezone,
-		l.verification_status, l.verified_fields,
+		l.verification_status,
 		l.last_verified_at, l.last_reviewed_at, l.verification_due_at, l.updated_at,
 		${openExpression} AS is_open_now,
 		EXISTS (SELECT 1 FROM location_operating_hours oh WHERE oh.location_id = l.id) AS has_structured_hours,
