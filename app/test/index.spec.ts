@@ -57,7 +57,7 @@ describe('Free Food Map API', () => {
 		expect(html).toContain('data-mobile-view-target="list"');
 		expect(html).toContain('data-mobile-view-target="map"');
 		expect(html).toContain('/app.css?v=12');
-		expect(html).toContain('/app.js?v=15');
+		expect(html).toMatch(/\/app\.js\?v=\d+/);
 		expect(html).toContain('id="show-all-locations"');
 		expect(html).toContain('Search by ZIP code');
 		expect(html).not.toContain('<script src="/leaflet.js"');
@@ -70,11 +70,12 @@ describe('Free Food Map API', () => {
 		expect(await response.json()).toEqual({ error: 'Enter a ZIP code, use your location, or choose Show all locations.' });
 	});
 
-	it('lazy-loads the map and starts with only metadata and aggregate counts', async () => {
+	it('lazy-loads the map and loads public listings without querying live counts', async () => {
 		const response = await SELF.fetch('https://freefoodmap.org/app.js?v=9');
 		const script = await response.text();
 		expect(script).toContain("loadScript('/leaflet.js')");
-		expect(script).toContain('Promise.all([loadMeta(), loadStats()])');
+		expect(script).toContain("api('/location-snapshot.json')");
+		expect(script).not.toContain("api('/api/stats')");
 		expect(script).not.toContain('await loadLocations();\n\t\tif (\'serviceWorker\'');
 	});
 
